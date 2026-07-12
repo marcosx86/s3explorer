@@ -2,11 +2,17 @@ package net.m21xx.s3explorer.ui.explorer
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarViewDay
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.ViewAgenda
+import androidx.compose.material.icons.filled.ViewCozy
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -32,6 +38,7 @@ fun FileExplorerScreen(
     val uiState by viewModel.uiState.collectAsState()
     val pagingItems = viewModel.pagedObjects.collectAsLazyPagingItems()
     val snackbarHostState = remember { SnackbarHostState() }
+    val gridState = rememberLazyGridState()
 
     BackHandler(enabled = uiState.currentPrefix.isNotEmpty()) {
         viewModel.navigateUp()
@@ -69,6 +76,15 @@ fun FileExplorerScreen(
                     }
                 },
                 actions = {
+                    val viewModeIcon = when (uiState.viewMode) {
+                        ExplorerViewMode.DETAILED_LIST -> Icons.Default.ViewAgenda
+                        ExplorerViewMode.COMPACT_LIST -> Icons.Default.List
+                        ExplorerViewMode.GALLERY_SMALL -> Icons.Default.ViewCozy
+                        ExplorerViewMode.GALLERY_LARGE -> Icons.Default.CalendarViewDay
+                    }
+                    IconButton(onClick = { viewModel.toggleViewMode() }) {
+                        Icon(viewModeIcon, contentDescription = "Toggle View Mode")
+                    }
                     IconButton(onClick = onNavigateToConnections) {
                         Icon(Icons.Default.Group, contentDescription = "Connections")
                     }
@@ -92,7 +108,19 @@ fun FileExplorerScreen(
             } else if (pagingItems.loadState.refresh is LoadState.NotLoading && pagingItems.itemCount == 0 && !uiState.isSyncing) {
                 EmptyDirectoryState()
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                val gridCells = when (uiState.viewMode) {
+                    ExplorerViewMode.DETAILED_LIST,
+                    ExplorerViewMode.COMPACT_LIST,
+                    ExplorerViewMode.GALLERY_LARGE -> GridCells.Fixed(1)
+                    ExplorerViewMode.GALLERY_SMALL -> GridCells.Fixed(2)
+                }
+
+                LazyVerticalGrid(
+                    columns = gridCells,
+                    state = gridState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 80.dp) // Add padding for FAB or scrolling
+                ) {
                     items(
                         count = pagingItems.itemCount,
                         key = pagingItems.itemKey { it.objectKey },
@@ -101,15 +129,25 @@ fun FileExplorerScreen(
                         val item = pagingItems[index]
                         if (item != null) {
                             if (item.isDirectory) {
-                                FolderItem(
-                                    item = item,
-                                    onClick = { viewModel.navigateToFolder(item.objectKey) }
-                                )
+                                when (uiState.viewMode) {
+                                    ExplorerViewMode.DETAILED_LIST,
+                                    ExplorerViewMode.COMPACT_LIST -> FolderItem(
+                                        item = item,
+                                        onClick = { viewModel.navigateToFolder(item.objectKey) }
+                                    )
+                                    ExplorerViewMode.GALLERY_SMALL,
+                                    ExplorerViewMode.GALLERY_LARGE -> GalleryFolderCardItem(
+                                        item = item,
+                                        onClick = { viewModel.navigateToFolder(item.objectKey) }
+                                    )
+                                }
                             } else {
-                                FileItem(
-                                    item = item,
-                                    onClick = { /* TODO: Open file viewer */ }
-                                )
+                                when (uiState.viewMode) {
+                                    ExplorerViewMode.DETAILED_LIST -> DetailedListItem(item = item, onClick = {})
+                                    ExplorerViewMode.COMPACT_LIST -> CompactListItem(item = item, onClick = {})
+                                    ExplorerViewMode.GALLERY_SMALL,
+                                    ExplorerViewMode.GALLERY_LARGE -> GalleryCardItem(item = item, onClick = {})
+                                }
                             }
                         }
                     }

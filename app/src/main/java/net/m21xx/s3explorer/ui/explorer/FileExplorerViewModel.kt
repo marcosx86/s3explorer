@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import net.m21xx.s3explorer.data.local.entity.S3ObjectEntity
+import net.m21xx.s3explorer.data.local.preferences.SettingsDataStore
 import net.m21xx.s3explorer.domain.ObserveDirectoryContentUseCase
 import net.m21xx.s3explorer.domain.SyncDirectoryUseCase
 import javax.inject.Inject
@@ -23,7 +24,8 @@ import javax.inject.Inject
 class FileExplorerViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val observeDirectoryContentUseCase: ObserveDirectoryContentUseCase,
-    private val syncDirectoryUseCase: SyncDirectoryUseCase
+    private val syncDirectoryUseCase: SyncDirectoryUseCase,
+    private val settingsDataStore: SettingsDataStore
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FileExplorerState())
@@ -40,6 +42,13 @@ class FileExplorerViewModel @Inject constructor(
         val profileId = savedStateHandle.get<String>("profileId") ?: ""
         val bucketName = savedStateHandle.get<String>("bucketName") ?: "unknown"
         _uiState.update { it.copy(profileId = profileId, bucketName = bucketName) }
+        
+        viewModelScope.launch {
+            settingsDataStore.viewMode.collect { mode ->
+                _uiState.update { it.copy(viewMode = mode) }
+            }
+        }
+        
         syncCurrentDirectory()
     }
 
@@ -72,6 +81,13 @@ class FileExplorerViewModel @Inject constructor(
             val newPrefix = if (parts.size <= 1) "" else parts.dropLast(1).joinToString("/") + "/"
             _uiState.update { it.copy(currentPrefix = newPrefix) }
             syncCurrentDirectory()
+        }
+    }
+
+    fun toggleViewMode() {
+        viewModelScope.launch {
+            val nextMode = _uiState.value.viewMode.next()
+            settingsDataStore.setViewMode(nextMode)
         }
     }
 }
