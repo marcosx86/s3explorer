@@ -12,6 +12,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -28,6 +31,8 @@ fun NewConnectionScreen(
     onConnectionSuccess: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    
+    var showBucketSheet by remember { mutableStateOf(false) }
 
     // Handle navigation on success
     if (uiState.connectionResult?.isSuccess == true) {
@@ -91,7 +96,10 @@ fun NewConnectionScreen(
                 singleLine = true,
                 trailingIcon = {
                     Row {
-                        IconButton(onClick = { /* TODO: List buckets */ }) {
+                        IconButton(onClick = { 
+                            showBucketSheet = true
+                            viewModel.fetchBuckets() 
+                        }) {
                             Icon(imageVector = Icons.Default.List, contentDescription = "List buckets")
                         }
                         IconButton(onClick = { /* TODO: Create bucket */ }) {
@@ -136,6 +144,46 @@ fun NewConnectionScreen(
                     )
                 } else {
                     Text("Connect")
+                }
+            }
+        }
+        
+        if (showBucketSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showBucketSheet = false }
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("Select a Bucket", style = MaterialTheme.typography.titleLarge)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    if (uiState.isFetchingBuckets) {
+                        CircularProgressIndicator()
+                    } else if (uiState.fetchBucketsError != null) {
+                        Text(
+                            text = uiState.fetchBucketsError ?: "Error fetching buckets",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    } else if (uiState.availableBuckets.isEmpty()) {
+                        Text("No buckets found.")
+                    } else {
+                        uiState.availableBuckets.forEach { bucket ->
+                            TextButton(
+                                onClick = {
+                                    viewModel.updateBucketName(bucket)
+                                    showBucketSheet = false
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(bucket)
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
         }

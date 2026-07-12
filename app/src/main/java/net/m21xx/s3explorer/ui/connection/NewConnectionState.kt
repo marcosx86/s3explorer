@@ -8,7 +8,10 @@ data class NewConnectionState(
     val termsAccepted: Boolean = false,
     val isTestingConnection: Boolean = false,
     val isSecretVisible: Boolean = false,
-    val connectionResult: Result<Unit>? = null
+    val connectionResult: Result<Unit>? = null,
+    val availableBuckets: List<String> = emptyList(),
+    val isFetchingBuckets: Boolean = false,
+    val fetchBucketsError: String? = null
 ) {
     val isConnectEnabled: Boolean
         get() = accessKey.isNotBlank() &&

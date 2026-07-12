@@ -9,12 +9,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import net.m21xx.s3explorer.domain.FetchAvailableBucketsUseCase
 import net.m21xx.s3explorer.domain.SaveConnectionProfileUseCase
 import javax.inject.Inject
 
 @HiltViewModel
 class NewConnectionViewModel @Inject constructor(
-    private val saveConnectionProfileUseCase: SaveConnectionProfileUseCase
+    private val saveConnectionProfileUseCase: SaveConnectionProfileUseCase,
+    private val fetchAvailableBucketsUseCase: FetchAvailableBucketsUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NewConnectionState())
@@ -44,26 +46,62 @@ class NewConnectionViewModel @Inject constructor(
         _uiState.update { it.copy(isSecretVisible = !it.isSecretVisible) }
     }
 
+    fun fetchBuckets() {
+        val state = _uiState.value
+        if (state.endpointUrl.isBlank() || state.accessKey.isBlank() || state.secretKey.isBlank()) {
+            _uiState.update { it.copy(fetchBucketsError = "Endpoint and credentials are required.") }
+            return
+        }
+
+        _uiState.update { it.copy(isFetchingBuckets = true, fetchBucketsError = null) }
+
+        viewModelScope.launch {
+            val result = fetchAvailableBucketsUseCase.execute(
+                endpointUrl = state.endpointUrl,
+                accessKey = state.accessKey,
+                secretKey = state.secretKey
+            )
+            
+            result.onSuccess { buckets ->
+                _uiState.update {
+                    it.copy(
+                        isFetchingBuckets = false,
+                        availableBuckets = buckets,
+                        fetchBucketsError = null
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isFetchingBuckets = false,
+                        fetchBucketsError = error.message ?: "Failed to fetch buckets"
+                    )
+                }
+            }
+        }
+    }
+
     fun testConnection() {
         if (!_uiState.value.isConnectEnabled) return
 
         _uiState.update { it.copy(isTestingConnection = true, connectionResult = null) }
 
         viewModelScope.launch {
-            // Mocking a network delay for the S3 connection test
-            delay(1500)
+            val state = _uiState.value
+            val result = fetchAvailableBucketsUseCase.execute(
+                endpointUrl = state.endpointUrl,
+                accessKey = state.accessKey,
+                secretKey = state.secretKey
+            )
             
-            // Basic mock validation: if URL starts with http, assume success
-            val isSuccess = _uiState.value.endpointUrl.startsWith("http")
-            
-            if (isSuccess) {
+            result.onSuccess {
                 try {
                     saveConnectionProfileUseCase.execute(
                         alias = "",
-                        endpointUrl = _uiState.value.endpointUrl,
-                        accessKey = _uiState.value.accessKey,
-                        secretKey = _uiState.value.secretKey,
-                        defaultBucket = _uiState.value.bucketName
+                        endpointUrl = state.endpointUrl,
+                        accessKey = state.accessKey,
+                        secretKey = state.secretKey,
+                        defaultBucket = state.bucketName
                     )
                     _uiState.update {
                         it.copy(
@@ -79,11 +117,11 @@ class NewConnectionViewModel @Inject constructor(
                         )
                     }
                 }
-            } else {
+            }.onFailure { error ->
                 _uiState.update {
                     it.copy(
                         isTestingConnection = false,
-                        connectionResult = Result.failure(Exception("Invalid Endpoint URL"))
+                        connectionResult = Result.failure(error)
                     )
                 }
             }
