@@ -9,10 +9,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import net.m21xx.s3explorer.domain.SaveConnectionProfileUseCase
 import javax.inject.Inject
 
 @HiltViewModel
-class NewConnectionViewModel @Inject constructor() : ViewModel() {
+class NewConnectionViewModel @Inject constructor(
+    private val saveConnectionProfileUseCase: SaveConnectionProfileUseCase
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NewConnectionState())
     val uiState: StateFlow<NewConnectionState> = _uiState.asStateFlow()
@@ -53,11 +56,36 @@ class NewConnectionViewModel @Inject constructor() : ViewModel() {
             // Basic mock validation: if URL starts with http, assume success
             val isSuccess = _uiState.value.endpointUrl.startsWith("http")
             
-            _uiState.update {
-                it.copy(
-                    isTestingConnection = false,
-                    connectionResult = if (isSuccess) Result.success(Unit) else Result.failure(Exception("Invalid Endpoint URL"))
-                )
+            if (isSuccess) {
+                try {
+                    saveConnectionProfileUseCase.execute(
+                        alias = "",
+                        endpointUrl = _uiState.value.endpointUrl,
+                        accessKey = _uiState.value.accessKey,
+                        secretKey = _uiState.value.secretKey,
+                        defaultBucket = _uiState.value.bucketName
+                    )
+                    _uiState.update {
+                        it.copy(
+                            isTestingConnection = false,
+                            connectionResult = Result.success(Unit)
+                        )
+                    }
+                } catch (e: Exception) {
+                    _uiState.update {
+                        it.copy(
+                            isTestingConnection = false,
+                            connectionResult = Result.failure(e)
+                        )
+                    }
+                }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        isTestingConnection = false,
+                        connectionResult = Result.failure(Exception("Invalid Endpoint URL"))
+                    )
+                }
             }
         }
     }
