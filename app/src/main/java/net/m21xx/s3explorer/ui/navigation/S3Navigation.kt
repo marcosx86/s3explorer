@@ -5,11 +5,15 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import androidx.navigation.NavType
 import net.m21xx.s3explorer.ui.connection.NewConnectionScreen
+import net.m21xx.s3explorer.ui.explorer.FileExplorerScreen
 
 object Destinations {
     const val NEW_CONNECTION = "new_connection"
-    const val FILE_EXPLORER = "file_explorer"
+    const val FILE_EXPLORER = "file_explorer/{bucketName}"
+    fun fileExplorerRoute(bucketName: String) = "file_explorer/$bucketName"
 }
 
 @Composable
@@ -24,17 +28,21 @@ fun S3NavHost(
         composable(Destinations.NEW_CONNECTION) {
             NewConnectionScreen(
                 onConnectionSuccess = {
-                    // Navigate to file explorer upon successful connection
-                    navController.navigate(Destinations.FILE_EXPLORER) {
+                    val bucketName = it.ifBlank { "unknown" }
+                    navController.navigate(Destinations.fileExplorerRoute(bucketName)) {
                         popUpTo(Destinations.NEW_CONNECTION) { inclusive = true }
                     }
                 }
             )
         }
         
-        composable(Destinations.FILE_EXPLORER) {
-            // TODO: Implement File Explorer Screen
-            androidx.compose.material3.Text(text = "File Explorer (Coming Soon)")
+        composable(
+            route = Destinations.FILE_EXPLORER,
+            arguments = listOf(navArgument("bucketName") { type = NavType.StringType })
+        ) {
+            FileExplorerScreen(
+                onOpenDrawer = { /* TODO: Open Navigation Drawer */ }
+            )
         }
     }
 }

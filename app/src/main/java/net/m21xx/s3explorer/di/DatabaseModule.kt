@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import net.m21xx.s3explorer.data.local.AppDatabase
 import net.m21xx.s3explorer.data.local.dao.ConnectionProfileDao
+import net.m21xx.s3explorer.data.local.dao.S3ObjectDao
 import javax.inject.Singleton
 
 @Module
@@ -22,11 +23,18 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "s3explorer_database"
-        ).build()
+        )
+        .fallbackToDestructiveMigration()
+        .build()
     }
 
     @Provides
     fun provideConnectionProfileDao(database: AppDatabase): ConnectionProfileDao {
         return database.connectionProfileDao()
+    }
+
+    @Provides
+    fun provideS3ObjectDao(database: AppDatabase): S3ObjectDao {
+        return database.s3ObjectDao()
     }
 }

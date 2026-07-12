@@ -28,7 +28,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @Composable
 fun NewConnectionScreen(
     viewModel: NewConnectionViewModel = hiltViewModel(),
-    onConnectionSuccess: () -> Unit
+    onConnectionSuccess: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     
@@ -36,7 +36,7 @@ fun NewConnectionScreen(
 
     // Handle navigation on success
     if (uiState.connectionResult?.isSuccess == true) {
-        onConnectionSuccess()
+        onConnectionSuccess(uiState.bucketName)
     }
 
     Scaffold(
