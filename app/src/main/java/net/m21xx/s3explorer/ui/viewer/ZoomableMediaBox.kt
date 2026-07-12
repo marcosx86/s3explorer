@@ -29,17 +29,11 @@ import kotlinx.coroutines.launch
 fun ZoomableMediaBox(
     modifier: Modifier = Modifier,
     isZoomable: Boolean = true,
+    onLeftBorderTap: (() -> Unit)? = null,
+    onRightBorderTap: (() -> Unit)? = null,
+    onSwipeDown: (() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
-    if (!isZoomable) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-            content = content
-        )
-        return
-    }
-
     val coroutineScope = rememberCoroutineScope()
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
@@ -52,7 +46,7 @@ fun ZoomableMediaBox(
         modifier = modifier
             .fillMaxSize()
             .clipToBounds()
-            .pointerInput(Unit) {
+            .pointerInput(isZoomable) {
                 val touchSlop = viewConfiguration.touchSlop
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
@@ -64,8 +58,8 @@ fun ZoomableMediaBox(
                         val zoom = event.calculateZoom()
                         val pan = event.calculatePan()
                         
-                        val newScale = (scale * zoom).coerceIn(1f, 10f)
-                        val isZooming = event.changes.size > 1 && zoom != 1f
+                        val newScale = if (isZoomable) (scale * zoom).coerceIn(1f, 10f) else 1f
+                        val isZooming = isZoomable && event.changes.size > 1 && zoom != 1f
                         
                         if (isZooming) {
                             scale = newScale
@@ -89,6 +83,7 @@ fun ZoomableMediaBox(
                             }
                         } else {
                             offset = Offset.Zero
+                            totalPan += pan
                             if (isZooming) {
                                 event.changes.forEach {
                                     if (it.positionChanged()) {
@@ -98,48 +93,67 @@ fun ZoomableMediaBox(
                             }
                         }
                     } while (event.changes.any { it.pressed })
+
+                    if (scale == 1f) {
+                        val threshold = touchSlop * 3
+                        if (totalPan.y > threshold && Math.abs(totalPan.y) > Math.abs(totalPan.x)) {
+                            onSwipeDown?.invoke()
+                        }
+                    }
                 }
             }
-            .pointerInput(Unit) {
+            .pointerInput(isZoomable) {
                 detectTapGestures(
                     onDoubleTap = { tapOffset ->
-                        coroutineScope.launch {
-                            if (scale > 1f) {
-                                val currentScale = scale
-                                val currentOffset = offset
-                                scale = 1f
-                                offset = Offset.Zero
-                                
-                                launch {
-                                    animatedOffsetX.snapTo(currentOffset.x)
-                                    animatedOffsetX.animateTo(0f, tween(300))
+                        if (isZoomable) {
+                            coroutineScope.launch {
+                                if (scale > 1f) {
+                                    val currentScale = scale
+                                    val currentOffset = offset
+                                    scale = 1f
+                                    offset = Offset.Zero
+                                    
+                                    launch {
+                                        animatedOffsetX.snapTo(currentOffset.x)
+                                        animatedOffsetX.animateTo(0f, tween(300))
+                                    }
+                                    launch {
+                                        animatedOffsetY.snapTo(currentOffset.y)
+                                        animatedOffsetY.animateTo(0f, tween(300))
+                                    }
+                                    animatedScale.snapTo(currentScale)
+                                    animatedScale.animateTo(1f, tween(300))
+                                } else {
+                                    scale = 4f
+                                    val maxX = (size.width * (scale - 1)) / 2f
+                                    val maxY = (size.height * (scale - 1)) / 2f
+                                    val centerX = size.width / 2f
+                                    val centerY = size.height / 2f
+                                    val targetX = ((centerX - tapOffset.x) * scale).coerceIn(-maxX, maxX)
+                                    val targetY = ((centerY - tapOffset.y) * scale).coerceIn(-maxY, maxY)
+                                    offset = Offset(targetX, targetY)
+                                    
+                                    launch {
+                                        animatedOffsetX.snapTo(0f)
+                                        animatedOffsetX.animateTo(targetX, tween(300))
+                                    }
+                                    launch {
+                                        animatedOffsetY.snapTo(0f)
+                                        animatedOffsetY.animateTo(targetY, tween(300))
+                                    }
+                                    animatedScale.snapTo(1f)
+                                    animatedScale.animateTo(4f, tween(300))
                                 }
-                                launch {
-                                    animatedOffsetY.snapTo(currentOffset.y)
-                                    animatedOffsetY.animateTo(0f, tween(300))
-                                }
-                                animatedScale.snapTo(currentScale)
-                                animatedScale.animateTo(1f, tween(300))
-                            } else {
-                                scale = 4f
-                                val maxX = (size.width * (scale - 1)) / 2f
-                                val maxY = (size.height * (scale - 1)) / 2f
-                                val centerX = size.width / 2f
-                                val centerY = size.height / 2f
-                                val targetX = ((centerX - tapOffset.x) * scale).coerceIn(-maxX, maxX)
-                                val targetY = ((centerY - tapOffset.y) * scale).coerceIn(-maxY, maxY)
-                                offset = Offset(targetX, targetY)
-                                
-                                launch {
-                                    animatedOffsetX.snapTo(0f)
-                                    animatedOffsetX.animateTo(targetX, tween(300))
-                                }
-                                launch {
-                                    animatedOffsetY.snapTo(0f)
-                                    animatedOffsetY.animateTo(targetY, tween(300))
-                                }
-                                animatedScale.snapTo(1f)
-                                animatedScale.animateTo(4f, tween(300))
+                            }
+                        }
+                    },
+                    onTap = { tapOffset ->
+                        if (scale == 1f) {
+                            val borderLimit = size.width * 0.15f
+                            if (tapOffset.x < borderLimit) {
+                                onLeftBorderTap?.invoke()
+                            } else if (tapOffset.x > size.width - borderLimit) {
+                                onRightBorderTap?.invoke()
                             }
                         }
                     }

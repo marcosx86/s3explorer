@@ -20,6 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +37,8 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.decode.VideoFrameDecoder
 import androidx.compose.runtime.DisposableEffect
+import kotlinx.coroutines.launch
+
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -76,6 +79,7 @@ fun MediaViewerScreen(
                 initialPage = uiState.initialPage,
                 pageCount = { uiState.mediaItems.size }
             )
+            val coroutineScope = rememberCoroutineScope()
 
             HorizontalPager(
                 state = pagerState,
@@ -85,7 +89,22 @@ fun MediaViewerScreen(
                 val item = uiState.mediaItems[page]
                 MediaPage(
                     item = item,
-                    getPresignedUrl = { viewModel.getPresignedUrl(it) }
+                    getPresignedUrl = { viewModel.getPresignedUrl(it) },
+                    onLeftBorderTap = {
+                        if (pagerState.currentPage > 0) {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                            }
+                        }
+                    },
+                    onRightBorderTap = {
+                        if (pagerState.currentPage < pagerState.pageCount - 1) {
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                            }
+                        }
+                    },
+                    onSwipeDown = onNavigateBack
                 )
             }
         }
@@ -104,7 +123,10 @@ fun MediaViewerScreen(
 @Composable
 fun MediaPage(
     item: MediaItem,
-    getPresignedUrl: suspend (String) -> String?
+    getPresignedUrl: suspend (String) -> String?,
+    onLeftBorderTap: () -> Unit,
+    onRightBorderTap: () -> Unit,
+    onSwipeDown: () -> Unit
 ) {
     var url by remember { mutableStateOf<String?>(null) }
     
@@ -114,7 +136,10 @@ fun MediaPage(
 
     ZoomableMediaBox(
         modifier = Modifier.fillMaxSize(),
-        isZoomable = !item.isVideo
+        isZoomable = !item.isVideo,
+        onLeftBorderTap = onLeftBorderTap,
+        onRightBorderTap = onRightBorderTap,
+        onSwipeDown = onSwipeDown
     ) {
         if (url != null) {
             val context = LocalContext.current
