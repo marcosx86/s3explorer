@@ -17,6 +17,10 @@ object Destinations {
     fun newConnectionRoute(reuseProfileId: String? = null) = if (reuseProfileId != null) "new_connection?reuseProfileId=$reuseProfileId" else "new_connection"
     const val FILE_EXPLORER = "file_explorer/{profileId}/{bucketName}"
     fun fileExplorerRoute(profileId: String, bucketName: String) = "file_explorer/$profileId/$bucketName"
+
+    const val MEDIA_VIEWER = "media_viewer/{profileId}/{bucketName}?parentPrefix={parentPrefix}&initialObjectKey={initialObjectKey}"
+    fun mediaViewerRoute(profileId: String, bucketName: String, parentPrefix: String, initialObjectKey: String) =
+        "media_viewer/$profileId/$bucketName?parentPrefix=${android.net.Uri.encode(parentPrefix)}&initialObjectKey=${android.net.Uri.encode(initialObjectKey)}"
 }
 
 @Composable
@@ -72,7 +76,26 @@ fun S3NavHost(
                 onOpenDrawer = { /* TODO: Open Navigation Drawer */ },
                 onNavigateToConnections = {
                     navController.popBackStack(Destinations.CONNECTIONS_LIST, false)
+                },
+                onNavigateToMediaViewer = { profileId, bucketName, parentPrefix, initialObjectKey ->
+                    navController.navigate(
+                        Destinations.mediaViewerRoute(profileId, bucketName, parentPrefix, initialObjectKey)
+                    )
                 }
+            )
+        }
+
+        composable(
+            route = Destinations.MEDIA_VIEWER,
+            arguments = listOf(
+                navArgument("profileId") { type = NavType.StringType },
+                navArgument("bucketName") { type = NavType.StringType },
+                navArgument("parentPrefix") { type = NavType.StringType; defaultValue = "" },
+                navArgument("initialObjectKey") { type = NavType.StringType; defaultValue = "" }
+            )
+        ) {
+            net.m21xx.s3explorer.ui.viewer.MediaViewerScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

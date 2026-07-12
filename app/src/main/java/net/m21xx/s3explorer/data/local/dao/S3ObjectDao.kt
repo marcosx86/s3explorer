@@ -12,6 +12,9 @@ interface S3ObjectDao {
     @Query("SELECT * FROM s3_objects WHERE profileId = :profileId AND bucketName = :bucketName AND parentPrefix = :parentPrefix ORDER BY isDirectory DESC, objectKey ASC")
     fun getObjectsByPrefix(profileId: String, bucketName: String, parentPrefix: String): PagingSource<Int, S3ObjectEntity>
 
+    @Query("SELECT * FROM s3_objects WHERE profileId = :profileId AND bucketName = :bucketName AND parentPrefix = :parentPrefix AND isDirectory = 0 ORDER BY objectKey ASC")
+    suspend fun getAllFilesByPrefix(profileId: String, bucketName: String, parentPrefix: String): List<S3ObjectEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(objects: List<S3ObjectEntity>)
 

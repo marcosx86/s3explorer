@@ -33,7 +33,8 @@ import androidx.paging.compose.itemKey
 fun FileExplorerScreen(
     viewModel: FileExplorerViewModel = hiltViewModel(),
     onOpenDrawer: () -> Unit,
-    onNavigateToConnections: () -> Unit
+    onNavigateToConnections: () -> Unit,
+    onNavigateToMediaViewer: (profileId: String, bucketName: String, parentPrefix: String, initialObjectKey: String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val pagingItems = viewModel.pagedObjects.collectAsLazyPagingItems()
@@ -147,20 +148,20 @@ fun FileExplorerScreen(
                                         item = item, 
                                         getThumbnailUrl = { viewModel.getThumbnailUrl(it) },
                                         getThumbnailUrlSync = { viewModel.getThumbnailUrlSync(it) },
-                                        onClick = {}
+                                        onClick = { onNavigateToMediaViewer(uiState.profileId, uiState.bucketName, uiState.currentPrefix, item.objectKey) }
                                     )
                                     ExplorerViewMode.COMPACT_LIST -> CompactListItem(
                                         item = item, 
                                         getThumbnailUrl = { viewModel.getThumbnailUrl(it) },
                                         getThumbnailUrlSync = { viewModel.getThumbnailUrlSync(it) },
-                                        onClick = {}
+                                        onClick = { onNavigateToMediaViewer(uiState.profileId, uiState.bucketName, uiState.currentPrefix, item.objectKey) }
                                     )
                                     ExplorerViewMode.GALLERY_SMALL,
                                     ExplorerViewMode.GALLERY_LARGE -> GalleryCardItem(
                                         item = item, 
                                         getThumbnailUrl = { viewModel.getThumbnailUrl(it) },
                                         getThumbnailUrlSync = { viewModel.getThumbnailUrlSync(it) },
-                                        onClick = {}
+                                        onClick = { onNavigateToMediaViewer(uiState.profileId, uiState.bucketName, uiState.currentPrefix, item.objectKey) }
                                     )
                                 }
                             }
