@@ -162,8 +162,10 @@ fun S3NavHost(
             PlaceholderScreen("Trash", onNavigateBack = { navController.popBackStack() })
         }
 
-        composable(Destinations.GLOBAL_SETTINGS) {
-            PlaceholderScreen("Global Settings", onNavigateBack = { navController.popBackStack() })
+        composable(route = Destinations.GLOBAL_SETTINGS) {
+            net.m21xx.s3explorer.ui.settings.GlobalSettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         composable(Destinations.MEDIA_BACKUP) {
