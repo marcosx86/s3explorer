@@ -13,7 +13,7 @@ interface ConnectionProfileDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProfile(profile: ConnectionProfileEntity)
 
-    @Query("SELECT * FROM connection_profiles")
+    @Query("SELECT * FROM connection_profiles ORDER BY lastUsedAt DESC")
     fun getAllProfiles(): Flow<List<ConnectionProfileEntity>>
 
     @Query("SELECT * FROM connection_profiles WHERE profileId = :profileId LIMIT 1")

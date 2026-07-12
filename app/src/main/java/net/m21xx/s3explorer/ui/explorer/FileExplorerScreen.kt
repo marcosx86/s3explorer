@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -25,7 +26,8 @@ import androidx.paging.compose.itemKey
 @Composable
 fun FileExplorerScreen(
     viewModel: FileExplorerViewModel = hiltViewModel(),
-    onOpenDrawer: () -> Unit
+    onOpenDrawer: () -> Unit,
+    onNavigateToConnections: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val pagingItems = viewModel.pagedObjects.collectAsLazyPagingItems()
@@ -67,6 +69,9 @@ fun FileExplorerScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onNavigateToConnections) {
+                        Icon(Icons.Default.Group, contentDescription = "Connections")
+                    }
                     IconButton(onClick = { /* TODO: Add file/folder */ }) {
                         Icon(Icons.Default.Add, contentDescription = "Add")
                     }

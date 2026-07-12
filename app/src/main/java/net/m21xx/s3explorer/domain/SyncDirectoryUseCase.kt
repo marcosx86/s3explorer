@@ -30,7 +30,7 @@ class SyncDirectoryUseCase @Inject constructor(
         )
         
         // Clear old local cache for this prefix
-        s3ObjectDao.clearObjectsByPrefix(bucketName, prefix)
+        s3ObjectDao.clearObjectsByPrefix(profileId, bucketName, prefix)
         
         val entities = mutableListOf<S3ObjectEntity>()
         
@@ -38,6 +38,7 @@ class SyncDirectoryUseCase @Inject constructor(
         s3Result.folders.forEach { folderPrefix ->
             entities.add(
                 S3ObjectEntity(
+                    profileId = profileId,
                     objectKey = folderPrefix,
                     bucketName = bucketName,
                     size = 0,
@@ -53,6 +54,7 @@ class SyncDirectoryUseCase @Inject constructor(
             val fileKey = file.key ?: return@forEach
             entities.add(
                 S3ObjectEntity(
+                    profileId = profileId,
                     objectKey = fileKey,
                     bucketName = bucketName,
                     size = file.size ?: 0L,

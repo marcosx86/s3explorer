@@ -11,16 +11,44 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import net.m21xx.s3explorer.domain.FetchAvailableBucketsUseCase
 import net.m21xx.s3explorer.domain.SaveConnectionProfileUseCase
+import net.m21xx.s3explorer.data.local.dao.ConnectionProfileDao
+import net.m21xx.s3explorer.data.repository.ConnectionRepository
+import androidx.lifecycle.SavedStateHandle
 import javax.inject.Inject
 
 @HiltViewModel
 class NewConnectionViewModel @Inject constructor(
     private val saveConnectionProfileUseCase: SaveConnectionProfileUseCase,
-    private val fetchAvailableBucketsUseCase: FetchAvailableBucketsUseCase
+    private val fetchAvailableBucketsUseCase: FetchAvailableBucketsUseCase,
+    private val connectionProfileDao: ConnectionProfileDao,
+    private val connectionRepository: ConnectionRepository,
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NewConnectionState())
     val uiState: StateFlow<NewConnectionState> = _uiState.asStateFlow()
+
+    init {
+        val reuseProfileId = savedStateHandle.get<String>("reuseProfileId")
+        if (!reuseProfileId.isNullOrBlank()) {
+            loadReuseProfile(reuseProfileId)
+        }
+    }
+
+    private fun loadReuseProfile(profileId: String) {
+        viewModelScope.launch {
+            val profile = connectionProfileDao.getProfileById(profileId) ?: return@launch
+            val secretKey = connectionRepository.getProfileSecretKey(profileId) ?: return@launch
+            _uiState.update {
+                it.copy(
+                    accessKey = profile.accessKey,
+                    secretKey = secretKey,
+                    endpointUrl = profile.endpointUrl,
+                    region = profile.region
+                )
+            }
+        }
+    }
 
     fun updateAccessKey(key: String) {
         _uiState.update { it.copy(accessKey = key) }

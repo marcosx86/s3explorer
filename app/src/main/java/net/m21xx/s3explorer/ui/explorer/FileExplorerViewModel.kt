@@ -32,7 +32,7 @@ class FileExplorerViewModel @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     val pagedObjects: Flow<PagingData<S3ObjectEntity>> = _uiState
         .flatMapLatest { state ->
-            observeDirectoryContentUseCase.execute(state.bucketName, state.currentPrefix)
+            observeDirectoryContentUseCase.execute(state.profileId, state.bucketName, state.currentPrefix)
         }
         .cachedIn(viewModelScope)
 

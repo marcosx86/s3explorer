@@ -11,13 +11,13 @@ import javax.inject.Inject
 class ObserveDirectoryContentUseCase @Inject constructor(
     private val s3ObjectDao: S3ObjectDao
 ) {
-    fun execute(bucketName: String, parentPrefix: String): Flow<PagingData<S3ObjectEntity>> {
+    fun execute(profileId: String, bucketName: String, parentPrefix: String): Flow<PagingData<S3ObjectEntity>> {
         return Pager(
             config = PagingConfig(
                 pageSize = 50,
                 enablePlaceholders = false
             ),
-            pagingSourceFactory = { s3ObjectDao.getObjectsByPrefix(bucketName, parentPrefix) }
+            pagingSourceFactory = { s3ObjectDao.getObjectsByPrefix(profileId, bucketName, parentPrefix) }
         ).flow
     }
 }
