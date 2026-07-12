@@ -137,8 +137,8 @@ fun DetailedListItem(
         }
     }
     
-    val extension = MimeTypeMap.getFileExtensionFromUrl(item.objectKey)?.lowercase()
-        ?: item.objectKey.substringAfterLast('.', "").lowercase()
+    val filename = item.objectKey.substringAfterLast('/')
+    val extension = if (filename.contains('.')) filename.substringAfterLast('.').lowercase() else ""
     val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
     val isVideo = mimeType?.startsWith("video/") == true
 
@@ -201,8 +201,8 @@ fun CompactListItem(
         }
     }
     
-    val extension = MimeTypeMap.getFileExtensionFromUrl(item.objectKey)?.lowercase()
-        ?: item.objectKey.substringAfterLast('.', "").lowercase()
+    val filename = item.objectKey.substringAfterLast('/')
+    val extension = if (filename.contains('.')) filename.substringAfterLast('.').lowercase() else ""
     val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
     val isVideo = mimeType?.startsWith("video/") == true
 
@@ -263,8 +263,8 @@ fun GalleryCardItem(
         }
     }
 
-    val extension = MimeTypeMap.getFileExtensionFromUrl(item.objectKey)?.lowercase()
-        ?: item.objectKey.substringAfterLast('.', "").lowercase()
+    val filename = item.objectKey.substringAfterLast('/')
+    val extension = if (filename.contains('.')) filename.substringAfterLast('.').lowercase() else ""
     val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
     val isVideo = mimeType?.startsWith("video/") == true
 

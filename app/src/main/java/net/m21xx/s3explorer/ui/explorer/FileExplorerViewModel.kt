@@ -103,8 +103,8 @@ class FileExplorerViewModel @Inject constructor(
     suspend fun getThumbnailUrl(item: S3ObjectEntity): String? {
         thumbnailCache[item.objectKey]?.let { return it }
 
-        val extension = MimeTypeMap.getFileExtensionFromUrl(item.objectKey)?.lowercase()
-            ?: item.objectKey.substringAfterLast('.', "").lowercase()
+        val filename = item.objectKey.substringAfterLast('/')
+        val extension = if (filename.contains('.')) filename.substringAfterLast('.').lowercase() else ""
 
         val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
 

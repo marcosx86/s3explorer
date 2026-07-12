@@ -21,6 +21,7 @@ class SyncDirectoryUseCase @Inject constructor(
         
         // Fetch from S3
         val s3Result = s3NetworkDataSource.listObjects(
+            profileId = profileId,
             endpoint = profile.endpointUrl,
             accessKey = profile.accessKey,
             secretKey = secretKey,

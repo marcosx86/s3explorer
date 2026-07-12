@@ -60,19 +60,21 @@ class MediaViewerViewModel @Inject constructor(
             try {
                 val allFiles = s3ObjectDao.getAllFilesByPrefix(profileId, bucketName, parentPrefix)
                 
-                val mediaItems = allFiles.mapNotNull { entity ->
-                    val extension = MimeTypeMap.getFileExtensionFromUrl(entity.objectKey)?.lowercase()
-                        ?: entity.objectKey.substringAfterLast('.', "").lowercase()
-                    val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
-                    
-                    if (mimeType != null && (mimeType.startsWith("image/") || mimeType.startsWith("video/"))) {
-                        MediaItem(
-                            entity = entity,
-                            mimeType = mimeType,
-                            isVideo = mimeType.startsWith("video/")
-                        )
-                    } else {
-                        null
+                val mediaItems = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    allFiles.mapNotNull { entity ->
+                        val filename = entity.objectKey.substringAfterLast('/')
+                        val extension = if (filename.contains('.')) filename.substringAfterLast('.').lowercase() else ""
+                        val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+                        
+                        if (mimeType != null && (mimeType.startsWith("image/") || mimeType.startsWith("video/"))) {
+                            MediaItem(
+                                entity = entity,
+                                mimeType = mimeType,
+                                isVideo = mimeType.startsWith("video/")
+                            )
+                        } else {
+                            null
+                        }
                     }
                 }
 
