@@ -138,12 +138,14 @@ fun S3NavHost(
             )
         }
 
-        // Placeholder destinations
+        // Settings & Configurations
         composable(
             route = Destinations.ACCOUNT_SETTINGS,
             arguments = listOf(navArgument("profileId") { type = NavType.StringType })
         ) {
-            PlaceholderScreen("Account Settings", onNavigateBack = { navController.popBackStack() })
+            net.m21xx.s3explorer.ui.settings.AccountSettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         composable(
