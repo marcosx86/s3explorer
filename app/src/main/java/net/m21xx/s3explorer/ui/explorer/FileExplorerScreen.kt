@@ -11,6 +11,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -25,18 +29,37 @@ fun FileExplorerScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val pagingItems = viewModel.pagedObjects.collectAsLazyPagingItems()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     BackHandler(enabled = uiState.currentPrefix.isNotEmpty()) {
         viewModel.navigateUp()
     }
 
+    LaunchedEffect(uiState.errorMessage) {
+        uiState.errorMessage?.let { error ->
+            // Only show snackbar if there are already items rendered (not empty)
+            if (pagingItems.itemCount > 0) {
+                val result = snackbarHostState.showSnackbar(
+                    message = error,
+                    actionLabel = "Retry",
+                    duration = SnackbarDuration.Long
+                )
+                if (result == SnackbarResult.ActionPerformed) {
+                    viewModel.syncCurrentDirectory()
+                }
+            }
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { 
-                    Text(
-                        text = if (uiState.currentPrefix.isEmpty()) "Files" else uiState.currentPrefix.trimEnd('/').substringAfterLast('/')
-                    ) 
+                    Breadcrumbs(
+                        currentPrefix = uiState.currentPrefix,
+                        onNavigate = { prefix -> viewModel.navigateToFolder(prefix) }
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = onOpenDrawer) {
@@ -56,7 +79,12 @@ fun FileExplorerScreen(
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
-            if (pagingItems.loadState.refresh is LoadState.NotLoading && pagingItems.itemCount == 0 && !uiState.isSyncing) {
+            if (uiState.errorMessage != null && pagingItems.itemCount == 0 && !uiState.isSyncing) {
+                ErrorState(
+                    message = uiState.errorMessage!!,
+                    onRetry = { viewModel.syncCurrentDirectory() }
+                )
+            } else if (pagingItems.loadState.refresh is LoadState.NotLoading && pagingItems.itemCount == 0 && !uiState.isSyncing) {
                 EmptyDirectoryState()
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {

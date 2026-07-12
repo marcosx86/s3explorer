@@ -10,5 +10,6 @@ data class ConnectionProfileEntity(
     val alias: String,
     val endpointUrl: String,
     val accessKey: String,
-    val defaultBucket: String
+    val defaultBucket: String,
+    val region: String = "us-east-1"
 )

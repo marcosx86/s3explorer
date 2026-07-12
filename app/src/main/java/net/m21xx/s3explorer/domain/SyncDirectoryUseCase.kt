@@ -1,42 +1,68 @@
 package net.m21xx.s3explorer.domain
 
-import kotlinx.coroutines.delay
+import aws.smithy.kotlin.runtime.time.epochMilliseconds
+import net.m21xx.s3explorer.data.local.dao.ConnectionProfileDao
 import net.m21xx.s3explorer.data.local.dao.S3ObjectDao
 import net.m21xx.s3explorer.data.local.entity.S3ObjectEntity
+import net.m21xx.s3explorer.data.remote.S3NetworkDataSource
+import net.m21xx.s3explorer.data.repository.ConnectionRepository
 import javax.inject.Inject
 
 class SyncDirectoryUseCase @Inject constructor(
-    private val s3ObjectDao: S3ObjectDao
+    private val s3ObjectDao: S3ObjectDao,
+    private val connectionProfileDao: ConnectionProfileDao,
+    private val connectionRepository: ConnectionRepository,
+    private val s3NetworkDataSource: S3NetworkDataSource
 ) {
-    // Mock implementation for Phase 4 UI testing
-    suspend fun execute(bucketName: String, prefix: String) {
-        delay(1000) // Simulate network delay
+    suspend fun execute(profileId: String, bucketName: String, prefix: String) {
+        // Fetch credentials
+        val profile = connectionProfileDao.getProfileById(profileId) ?: return
+        val secretKey = connectionRepository.getProfileSecretKey(profileId) ?: return
         
-        // Clear old mock data for this prefix
+        // Fetch from S3
+        val s3Result = s3NetworkDataSource.listObjects(
+            endpoint = profile.endpointUrl,
+            accessKey = profile.accessKey,
+            secretKey = secretKey,
+            bucketName = bucketName,
+            prefix = prefix,
+            regionName = profile.region
+        )
+        
+        // Clear old local cache for this prefix
         s3ObjectDao.clearObjectsByPrefix(bucketName, prefix)
         
-        val mockData = mutableListOf<S3ObjectEntity>()
-        val currentTime = System.currentTimeMillis()
+        val entities = mutableListOf<S3ObjectEntity>()
         
-        // Add a few folders
-        mockData.add(S3ObjectEntity("${prefix}Documents/", bucketName, 0, currentTime, true, prefix))
-        mockData.add(S3ObjectEntity("${prefix}Images/", bucketName, 0, currentTime, true, prefix))
-        mockData.add(S3ObjectEntity("${prefix}Work/", bucketName, 0, currentTime, true, prefix))
-        
-        // Add 100 mock files
-        for (i in 1..100) {
-            mockData.add(
+        // Map Folders (CommonPrefixes)
+        s3Result.folders.forEach { folderPrefix ->
+            entities.add(
                 S3ObjectEntity(
-                    objectKey = "${prefix}file_$i.txt",
+                    objectKey = folderPrefix,
                     bucketName = bucketName,
-                    size = (Math.random() * 1024 * 1024 * 50).toLong(), // Random size up to 50MB
-                    lastModified = currentTime - (Math.random() * 86400000 * 30).toLong(), // Random date within last 30 days
+                    size = 0,
+                    lastModified = System.currentTimeMillis(), // Folders don't have a real last modified
+                    isDirectory = true,
+                    parentPrefix = prefix
+                )
+            )
+        }
+        
+        // Map Files (Contents)
+        s3Result.files.forEach { file ->
+            val fileKey = file.key ?: return@forEach
+            entities.add(
+                S3ObjectEntity(
+                    objectKey = fileKey,
+                    bucketName = bucketName,
+                    size = file.size ?: 0L,
+                    lastModified = file.lastModified?.epochMilliseconds ?: 0L,
                     isDirectory = false,
                     parentPrefix = prefix
                 )
             )
         }
         
-        s3ObjectDao.insertAll(mockData)
+        s3ObjectDao.insertAll(entities)
     }
 }

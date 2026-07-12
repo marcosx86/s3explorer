@@ -9,13 +9,15 @@ class FetchAvailableBucketsUseCase @Inject constructor(
     suspend fun execute(
         endpointUrl: String,
         accessKey: String,
-        secretKey: String
+        secretKey: String,
+        region: String = "us-east-1"
     ): Result<List<String>> {
         return try {
             val buckets = s3NetworkDataSource.listBuckets(
                 endpoint = endpointUrl,
                 accessKey = accessKey,
-                secretKey = secretKey
+                secretKey = secretKey,
+                regionName = region
             )
             Result.success(buckets)
         } catch (e: Exception) {

@@ -37,17 +37,23 @@ class FileExplorerViewModel @Inject constructor(
         .cachedIn(viewModelScope)
 
     init {
+        val profileId = savedStateHandle.get<String>("profileId") ?: ""
         val bucketName = savedStateHandle.get<String>("bucketName") ?: "unknown"
-        _uiState.update { it.copy(bucketName = bucketName) }
+        _uiState.update { it.copy(profileId = profileId, bucketName = bucketName) }
         syncCurrentDirectory()
     }
 
     fun syncCurrentDirectory() {
         val state = _uiState.value
-        _uiState.update { it.copy(isSyncing = true) }
+        if (state.profileId.isEmpty()) return
+        
+        _uiState.update { it.copy(isSyncing = true, errorMessage = null) }
         viewModelScope.launch {
             try {
-                syncDirectoryUseCase.execute(state.bucketName, state.currentPrefix)
+                syncDirectoryUseCase.execute(state.profileId, state.bucketName, state.currentPrefix)
+                _uiState.update { it.copy(errorMessage = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = e.message ?: "Failed to sync directory") }
             } finally {
                 _uiState.update { it.copy(isSyncing = false) }
             }

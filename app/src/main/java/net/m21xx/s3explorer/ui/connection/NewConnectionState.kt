@@ -5,10 +5,11 @@ data class NewConnectionState(
     val secretKey: String = "",
     val endpointUrl: String = "",
     val bucketName: String = "",
+    val region: String = "",
     val termsAccepted: Boolean = false,
     val isTestingConnection: Boolean = false,
     val isSecretVisible: Boolean = false,
-    val connectionResult: Result<Unit>? = null,
+    val connectionResult: Result<String>? = null, // Result now holds profileId
     val availableBuckets: List<String> = emptyList(),
     val isFetchingBuckets: Boolean = false,
     val fetchBucketsError: String? = null

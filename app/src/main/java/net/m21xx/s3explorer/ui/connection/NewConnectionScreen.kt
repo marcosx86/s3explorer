@@ -1,5 +1,6 @@
 package net.m21xx.s3explorer.ui.connection
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -28,15 +29,15 @@ import androidx.hilt.navigation.compose.hiltViewModel
 @Composable
 fun NewConnectionScreen(
     viewModel: NewConnectionViewModel = hiltViewModel(),
-    onConnectionSuccess: (String) -> Unit
+    onConnectionSuccess: (String, String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     
     var showBucketSheet by remember { mutableStateOf(false) }
 
     // Handle navigation on success
-    if (uiState.connectionResult?.isSuccess == true) {
-        onConnectionSuccess(uiState.bucketName)
+    uiState.connectionResult?.onSuccess { profileId ->
+        onConnectionSuccess(profileId, uiState.bucketName)
     }
 
     Scaffold(
@@ -89,6 +90,15 @@ fun NewConnectionScreen(
             )
 
             OutlinedTextField(
+                value = uiState.region,
+                onValueChange = { viewModel.updateRegion(it) },
+                label = { Text("Region (Optional)") },
+                placeholder = { Text("us-east-1") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            OutlinedTextField(
                 value = uiState.bucketName,
                 onValueChange = { viewModel.updateBucketName(it) },
                 label = { Text("Bucket Name (Optional)") },
@@ -111,12 +121,15 @@ fun NewConnectionScreen(
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { viewModel.toggleTermsAccepted(!uiState.termsAccepted) }
             ) {
                 Checkbox(
                     checked = uiState.termsAccepted,
-                    onCheckedChange = { viewModel.toggleTermsAccepted(it) }
+                    onCheckedChange = null
                 )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "I agree to the Terms of Service and Privacy Policy.",
                     style = MaterialTheme.typography.bodyMedium

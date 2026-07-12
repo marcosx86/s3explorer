@@ -38,6 +38,10 @@ class NewConnectionViewModel @Inject constructor(
         _uiState.update { it.copy(bucketName = name) }
     }
 
+    fun updateRegion(region: String) {
+        _uiState.update { it.copy(region = region) }
+    }
+
     fun toggleTermsAccepted(accepted: Boolean) {
         _uiState.update { it.copy(termsAccepted = accepted) }
     }
@@ -59,7 +63,8 @@ class NewConnectionViewModel @Inject constructor(
             val result = fetchAvailableBucketsUseCase.execute(
                 endpointUrl = state.endpointUrl,
                 accessKey = state.accessKey,
-                secretKey = state.secretKey
+                secretKey = state.secretKey,
+                region = state.region
             )
             
             result.onSuccess { buckets ->
@@ -91,22 +96,24 @@ class NewConnectionViewModel @Inject constructor(
             val result = fetchAvailableBucketsUseCase.execute(
                 endpointUrl = state.endpointUrl,
                 accessKey = state.accessKey,
-                secretKey = state.secretKey
+                secretKey = state.secretKey,
+                region = state.region
             )
             
             result.onSuccess {
                 try {
-                    saveConnectionProfileUseCase.execute(
+                    val profileId = saveConnectionProfileUseCase.execute(
                         alias = "",
                         endpointUrl = state.endpointUrl,
                         accessKey = state.accessKey,
                         secretKey = state.secretKey,
-                        defaultBucket = state.bucketName
+                        defaultBucket = state.bucketName,
+                        region = state.region
                     )
                     _uiState.update {
                         it.copy(
                             isTestingConnection = false,
-                            connectionResult = Result.success(Unit)
+                            connectionResult = Result.success(profileId)
                         )
                     }
                 } catch (e: Exception) {

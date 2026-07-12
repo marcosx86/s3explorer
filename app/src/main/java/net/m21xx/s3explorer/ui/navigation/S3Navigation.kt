@@ -12,8 +12,8 @@ import net.m21xx.s3explorer.ui.explorer.FileExplorerScreen
 
 object Destinations {
     const val NEW_CONNECTION = "new_connection"
-    const val FILE_EXPLORER = "file_explorer/{bucketName}"
-    fun fileExplorerRoute(bucketName: String) = "file_explorer/$bucketName"
+    const val FILE_EXPLORER = "file_explorer/{profileId}/{bucketName}"
+    fun fileExplorerRoute(profileId: String, bucketName: String) = "file_explorer/$profileId/$bucketName"
 }
 
 @Composable
@@ -27,9 +27,9 @@ fun S3NavHost(
     ) {
         composable(Destinations.NEW_CONNECTION) {
             NewConnectionScreen(
-                onConnectionSuccess = {
-                    val bucketName = it.ifBlank { "unknown" }
-                    navController.navigate(Destinations.fileExplorerRoute(bucketName)) {
+                onConnectionSuccess = { profileId, bucketNameRaw ->
+                    val bucketName = bucketNameRaw.ifBlank { "unknown" }
+                    navController.navigate(Destinations.fileExplorerRoute(profileId, bucketName)) {
                         popUpTo(Destinations.NEW_CONNECTION) { inclusive = true }
                     }
                 }
@@ -38,7 +38,10 @@ fun S3NavHost(
         
         composable(
             route = Destinations.FILE_EXPLORER,
-            arguments = listOf(navArgument("bucketName") { type = NavType.StringType })
+            arguments = listOf(
+                navArgument("profileId") { type = NavType.StringType },
+                navArgument("bucketName") { type = NavType.StringType }
+            )
         ) {
             FileExplorerScreen(
                 onOpenDrawer = { /* TODO: Open Navigation Drawer */ }
