@@ -33,15 +33,20 @@ The app is built using **Clean Architecture** principles and the **MVVM (Model-V
 * **Profile Isolation:** Directory caching is indexed via composite primary keys referencing the specific `profileId`. Multiple accounts accessing buckets with identical names (e.g., `test-bucket` on MinIO vs AWS S3) will never experience data crossover or cache pollution.
 
 ### 3. File Explorer & Navigation
-* **Dynamic View Modes:** Toggle seamlessly between four layouts:
+* **Connection Drawer**: A slide-out navigation panel providing quick access to active profile details, bucket storage stats (mocked size and object counts), and setup links.
+* **Dynamic View Modes**: Toggle seamlessly between four layouts:
   - **Detailed List:** Standard vertical layout with full size and modification details.
   - **Compact List:** Dense vertical list showing file name only.
   - **Gallery Small:** 2-column square grid of media cards.
   - **Gallery Large:** 1-column layout of large square media cards.
-* **Scroll State Preservation:** All layout changes occur dynamically inside a single `LazyVerticalGrid`, keeping the scroll position perfectly preserved.
-* **Interactive Breadcrumbs:** Tap-to-navigate path indicator allowing quick jumps to any parent directory in the path hierarchy.
+* **Scroll State Preservation**: All layout changes occur dynamically inside a single `LazyVerticalGrid`, keeping the scroll position perfectly preserved.
+* **Interactive Breadcrumbs**: Tap-to-navigate path indicator allowing quick jumps to any parent directory in the path hierarchy.
 
-### 4. High-Performance Media Thumbnails
+### 4. Settings & Configurations
+* **Account Settings**: Isolated by `profileId`. Configures filename encryption, multipart upload thresholds, upload concurrency limit, and local cache lifecycle (clear docs/thumbnails cache).
+* **Global Settings**: App-wide options including "Trust insecure SSL/TLS certificates" (allows connections to self-signed local NAS/MinIO endpoints), biometric lock screen activation, dotfiles visibility, and date format styling.
+
+### 5. High-Performance Media Thumbnails
 * **Automatic Media Classifier:** Utilizes Android's native `MimeTypeMap` to detect supported formats (e.g., `.jpg`, `.png`, `.webp`, `.mp4`, `.mkv`) from extensions, bypassing the need for manual codec lists.
 * **Secure Offline Presigning:** Generates temporary 1-hour pre-signed URLs locally (sub-millisecond HMAC calculations) to avoid memory-heavy file streaming.
 * **Strict Concurrency Throttling:** Configures Coil with a custom OkHttp `Dispatcher` to restrict network thumbnail requests to a maximum of **5 concurrent connections**, protecting both remote storage and device network bandwidth.
