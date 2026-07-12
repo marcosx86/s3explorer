@@ -91,6 +91,7 @@ dependencies {
 
     // Coil
     implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("io.coil-kt:coil-video:2.5.0")
 
     // Security Crypto
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
@@ -99,6 +100,7 @@ dependencies {
     implementation("aws.sdk.kotlin:s3:1.0.42")
     
     testImplementation("junit:junit:4.13.2")
+    testImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.02.00"))

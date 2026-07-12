@@ -18,7 +18,7 @@ class SaveConnectionProfileUseCase @Inject constructor(
     ): String {
         val profile = ConnectionProfileEntity(
             profileId = UUID.randomUUID().toString(),
-            alias = alias.ifBlank { endpointUrl },
+            alias = alias.trim(),
             endpointUrl = endpointUrl,
             accessKey = accessKey,
             defaultBucket = defaultBucket,

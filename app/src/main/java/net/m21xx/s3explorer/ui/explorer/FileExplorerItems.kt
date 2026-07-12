@@ -13,6 +13,10 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -23,7 +27,9 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.decode.VideoFrameDecoder
 import coil.request.ImageRequest
+import android.webkit.MimeTypeMap
 import net.m21xx.s3explorer.data.local.entity.S3ObjectEntity
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -114,6 +120,8 @@ fun GalleryFolderCardItem(
 @Composable
 fun DetailedListItem(
     item: S3ObjectEntity,
+    getThumbnailUrl: suspend (S3ObjectEntity) -> String?,
+    getThumbnailUrlSync: (S3ObjectEntity) -> String?,
     onClick: () -> Unit
 ) {
     val fileName = item.objectKey.removePrefix(item.parentPrefix)
@@ -121,6 +129,19 @@ fun DetailedListItem(
     val formattedSize = Formatter.formatShortFileSize(context, item.size)
     val formattedDate = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", Locale.getDefault()).format(Date(item.lastModified))
     
+    var url by remember(item.objectKey) { mutableStateOf(getThumbnailUrlSync(item)) }
+    
+    LaunchedEffect(item.objectKey) {
+        if (url == null) {
+            url = getThumbnailUrl(item)
+        }
+    }
+    
+    val extension = MimeTypeMap.getFileExtensionFromUrl(item.objectKey)?.lowercase()
+        ?: item.objectKey.substringAfterLast('.', "").lowercase()
+    val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+    val isVideo = mimeType?.startsWith("video/") == true
+
     ListItem(
         modifier = Modifier.clickable { onClick() },
         headlineContent = {
@@ -136,9 +157,16 @@ fun DetailedListItem(
         leadingContent = {
             AsyncImage(
                 model = ImageRequest.Builder(context)
-                    .data(null) // TODO: Real image loading via presigned URLs or custom Fetcher
+                    .data(url)
                     .size(128)
                     .crossfade(true)
+                    .apply {
+                        if (isVideo) {
+                            decoderFactory { result, options, _ ->
+                                VideoFrameDecoder(result.source, options)
+                            }
+                        }
+                    }
                     .build(),
                 contentDescription = "File thumbnail",
                 placeholder = rememberVectorPainter(Icons.Default.InsertDriveFile),
@@ -158,11 +186,26 @@ fun DetailedListItem(
 @Composable
 fun CompactListItem(
     item: S3ObjectEntity,
+    getThumbnailUrl: suspend (S3ObjectEntity) -> String?,
+    getThumbnailUrlSync: (S3ObjectEntity) -> String?,
     onClick: () -> Unit
 ) {
     val fileName = item.objectKey.removePrefix(item.parentPrefix)
     val context = LocalContext.current
     
+    var url by remember(item.objectKey) { mutableStateOf(getThumbnailUrlSync(item)) }
+    
+    LaunchedEffect(item.objectKey) {
+        if (url == null) {
+            url = getThumbnailUrl(item)
+        }
+    }
+    
+    val extension = MimeTypeMap.getFileExtensionFromUrl(item.objectKey)?.lowercase()
+        ?: item.objectKey.substringAfterLast('.', "").lowercase()
+    val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+    val isVideo = mimeType?.startsWith("video/") == true
+
     ListItem(
         modifier = Modifier.clickable { onClick() },
         headlineContent = {
@@ -176,9 +219,16 @@ fun CompactListItem(
         leadingContent = {
             AsyncImage(
                 model = ImageRequest.Builder(context)
-                    .data(null)
+                    .data(url)
                     .size(128)
                     .crossfade(true)
+                    .apply {
+                        if (isVideo) {
+                            decoderFactory { result, options, _ ->
+                                VideoFrameDecoder(result.source, options)
+                            }
+                        }
+                    }
                     .build(),
                 contentDescription = "File thumbnail",
                 placeholder = rememberVectorPainter(Icons.Default.InsertDriveFile),
@@ -198,10 +248,25 @@ fun CompactListItem(
 @Composable
 fun GalleryCardItem(
     item: S3ObjectEntity,
+    getThumbnailUrl: suspend (S3ObjectEntity) -> String?,
+    getThumbnailUrlSync: (S3ObjectEntity) -> String?,
     onClick: () -> Unit
 ) {
     val fileName = item.objectKey.removePrefix(item.parentPrefix)
     val context = LocalContext.current
+    
+    var url by remember(item.objectKey) { mutableStateOf(getThumbnailUrlSync(item)) }
+    
+    LaunchedEffect(item.objectKey) {
+        if (url == null) {
+            url = getThumbnailUrl(item)
+        }
+    }
+
+    val extension = MimeTypeMap.getFileExtensionFromUrl(item.objectKey)?.lowercase()
+        ?: item.objectKey.substringAfterLast('.', "").lowercase()
+    val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+    val isVideo = mimeType?.startsWith("video/") == true
 
     ElevatedCard(
         modifier = Modifier
@@ -212,9 +277,16 @@ fun GalleryCardItem(
         Box(modifier = Modifier.fillMaxSize()) {
             AsyncImage(
                 model = ImageRequest.Builder(context)
-                    .data(null)
+                    .data(url)
                     .size(1080)
                     .crossfade(true)
+                    .apply {
+                        if (isVideo) {
+                            decoderFactory { result, options, _ ->
+                                VideoFrameDecoder(result.source, options)
+                            }
+                        }
+                    }
                     .build(),
                 contentDescription = "File thumbnail",
                 placeholder = rememberVectorPainter(Icons.Default.Image),

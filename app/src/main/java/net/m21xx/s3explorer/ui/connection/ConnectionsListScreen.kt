@@ -64,13 +64,14 @@ fun ConnectionsListScreen(
                                 viewModel.markProfileAsActive(profile.profileId)
                                 onNavigateToExplorer(profile.profileId, profile.defaultBucket) 
                             },
-                            onDelete = { viewModel.deleteProfile(profile.profileId) },
-                            onRename = { 
-                                renameProfileId = profile.profileId
-                                newAliasName = profile.alias.ifBlank { profile.defaultBucket }
-                            },
-                            onGenerateConfig = { viewModel.generateConfig(profile.profileId) },
-                            onReuse = { onNavigateToNewConnection(profile.profileId) }
+                             onDelete = { viewModel.deleteProfile(profile.profileId) },
+                             onRename = { 
+                                 renameProfileId = profile.profileId
+                                 val hasCustomAlias = profile.alias.isNotBlank() && profile.alias != profile.endpointUrl
+                                 newAliasName = if (hasCustomAlias) profile.alias else profile.defaultBucket
+                             },
+                             onGenerateConfig = { viewModel.generateConfig(profile.profileId) },
+                             onReuse = { onNavigateToNewConnection(profile.profileId) }
                         )
                         Divider()
                     }
@@ -142,7 +143,21 @@ fun ConnectionItem(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            val displayName = profile.alias.ifBlank { profile.defaultBucket.ifBlank { "Unnamed Profile" } }
+            val hasCustomAlias = profile.alias.isNotBlank() && profile.alias != profile.endpointUrl
+            val displayName = if (hasCustomAlias) {
+                profile.alias
+            } else if (profile.defaultBucket.isNotBlank()) {
+                profile.defaultBucket
+            } else {
+                profile.endpointUrl
+            }
+
+            val subtitle = if (displayName == profile.endpointUrl) {
+                profile.accessKey
+            } else {
+                "${profile.accessKey} @ ${profile.endpointUrl}"
+            }
+
             Text(
                 text = displayName,
                 style = MaterialTheme.typography.titleMedium,
@@ -150,7 +165,7 @@ fun ConnectionItem(
                 color = if (isActive) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "${profile.accessKey} @ ${profile.endpointUrl}",
+                text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

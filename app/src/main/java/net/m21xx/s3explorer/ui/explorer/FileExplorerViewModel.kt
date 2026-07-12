@@ -16,8 +16,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import net.m21xx.s3explorer.data.local.entity.S3ObjectEntity
 import net.m21xx.s3explorer.data.local.preferences.SettingsDataStore
+import net.m21xx.s3explorer.domain.GetPresignedUrlUseCase
 import net.m21xx.s3explorer.domain.ObserveDirectoryContentUseCase
 import net.m21xx.s3explorer.domain.SyncDirectoryUseCase
+import android.webkit.MimeTypeMap
 import javax.inject.Inject
 
 @HiltViewModel
@@ -25,8 +27,11 @@ class FileExplorerViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val observeDirectoryContentUseCase: ObserveDirectoryContentUseCase,
     private val syncDirectoryUseCase: SyncDirectoryUseCase,
-    private val settingsDataStore: SettingsDataStore
+    private val settingsDataStore: SettingsDataStore,
+    private val getPresignedUrlUseCase: GetPresignedUrlUseCase
 ) : ViewModel() {
+ 
+    private val thumbnailCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     private val _uiState = MutableStateFlow(FileExplorerState())
     val uiState: StateFlow<FileExplorerState> = _uiState.asStateFlow()
@@ -89,5 +94,27 @@ class FileExplorerViewModel @Inject constructor(
             val nextMode = _uiState.value.viewMode.next()
             settingsDataStore.setViewMode(nextMode)
         }
+    }
+
+    fun getThumbnailUrlSync(item: S3ObjectEntity): String? {
+        return thumbnailCache[item.objectKey]
+    }
+
+    suspend fun getThumbnailUrl(item: S3ObjectEntity): String? {
+        thumbnailCache[item.objectKey]?.let { return it }
+
+        val extension = MimeTypeMap.getFileExtensionFromUrl(item.objectKey)?.lowercase()
+            ?: item.objectKey.substringAfterLast('.', "").lowercase()
+
+        val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+
+        if (mimeType != null && (mimeType.startsWith("image/") || mimeType.startsWith("video/"))) {
+            val url = getPresignedUrlUseCase.execute(_uiState.value.profileId, _uiState.value.bucketName, item.objectKey)
+            if (url != null) {
+                thumbnailCache[item.objectKey] = url
+            }
+            return url
+        }
+        return null
     }
 }

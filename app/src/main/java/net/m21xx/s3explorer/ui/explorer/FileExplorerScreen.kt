@@ -143,10 +143,25 @@ fun FileExplorerScreen(
                                 }
                             } else {
                                 when (uiState.viewMode) {
-                                    ExplorerViewMode.DETAILED_LIST -> DetailedListItem(item = item, onClick = {})
-                                    ExplorerViewMode.COMPACT_LIST -> CompactListItem(item = item, onClick = {})
+                                    ExplorerViewMode.DETAILED_LIST -> DetailedListItem(
+                                        item = item, 
+                                        getThumbnailUrl = { viewModel.getThumbnailUrl(it) },
+                                        getThumbnailUrlSync = { viewModel.getThumbnailUrlSync(it) },
+                                        onClick = {}
+                                    )
+                                    ExplorerViewMode.COMPACT_LIST -> CompactListItem(
+                                        item = item, 
+                                        getThumbnailUrl = { viewModel.getThumbnailUrl(it) },
+                                        getThumbnailUrlSync = { viewModel.getThumbnailUrlSync(it) },
+                                        onClick = {}
+                                    )
                                     ExplorerViewMode.GALLERY_SMALL,
-                                    ExplorerViewMode.GALLERY_LARGE -> GalleryCardItem(item = item, onClick = {})
+                                    ExplorerViewMode.GALLERY_LARGE -> GalleryCardItem(
+                                        item = item, 
+                                        getThumbnailUrl = { viewModel.getThumbnailUrl(it) },
+                                        getThumbnailUrlSync = { viewModel.getThumbnailUrlSync(it) },
+                                        onClick = {}
+                                    )
                                 }
                             }
                         }
