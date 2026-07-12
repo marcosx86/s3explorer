@@ -1,24 +1,83 @@
 # S3 Explorer for Android
 
-A modern, offline-first Android application designed to act as a robust file explorer for S3-compatible buckets. It features a highly decoupled architecture utilizing local storage for caching, secure credential management, and background processing for reliable file transfers.
+A modern, offline-first Android application designed to act as a robust, high-performance file explorer for S3-compatible buckets (such as AWS S3, MinIO, and Cloudflare R2).
 
-## Architectural Pillars
+Built with Jetpack Compose, Kotlin, and following Modern Android Development (MAD) practices, the application features secure local caching, encrypted credential management, and highly-optimized media thumbnail loading.
 
-- **Data Layer Separation:** Decoupled UI from network/storage. S3 API calls are abstracted behind a repository pattern.
-- **Local Caching (SSOT):** Implements a Single Source of Truth strategy. Metadata is cached locally using Room Database for offline viewing and instant loading.
-- **Background Worker Management:** Uses Android `WorkManager` for reliable file uploads, downloads, and background syncs that survive app closures.
-- **Preferences & State Management:** Utilizes Android `DataStore` to store global and profile-specific configurations securely.
+---
+
+## Architecture & Technology Stack
+
+The app is built using **Clean Architecture** principles and the **MVVM (Model-View-ViewModel)** design pattern, keeping the UI, business logic, and data layers decoupled.
+
+* **UI Layer:** Built entirely in **Jetpack Compose** using Material 3 guidelines for a clean, modern look. Navigation is handled reactively using Compose Navigation.
+* **Local Caching (Single Source of Truth):** S3 bucket metadata is cached locally via **Room Database** (v4). Queries are exposed through **Jetpack Paging 3** for lazy loading and smooth scrolling of directory contents.
+* **Secure Credential Store:** AWS access keys and secret keys are stored securely using **Android Cryptography (EncryptedSharedPreferences / Android Keystore)**. 
+* **State & Configuration Persistence:** App configurations (e.g., Explorer View Modes) are stored persistently using Jetpack **Preferences DataStore**.
+* **Dependency Injection:** Fully modularized and decoupled using **Dagger Hilt** for DI.
+* **Network & S3 Client:** Powered by the official **AWS Kotlin SDK** (`aws.sdk.kotlin:s3`) for S3 communication.
+* **Media Processing:** Image and video thumbnails are loaded via **Coil**, configured with OkHttp and standard media frame decoders.
+
+---
 
 ## Core Features
 
-- **Connection Management:** Support for multiple S3-compatible connections (e.g., AWS S3, MinIO) with secure credential storage via Android Keystore.
-- **Bucket & File Navigation:** Breadcrumb navigation, lazy-loaded thumbnails, dynamic grid/list layouts, and fast sorting/filtering backed by local SQLite queries.
-- **File & Folder Operations:** Contextual menus for rename, move, copy, delete, share (pre-signed URLs), and offline pinning.
-- **Transfer Manager:** Dedicated background transfer manager tracking active uploads/downloads with real-time speed and progress metrics.
-- **Advanced Settings:** Support for client-side encryption (E2E), multipart upload tuning, filename obfuscation, and OS integration (Storage Access Framework).
+### 1. Connection & Profile Management
+* **Multi-Profile Accounts:** Add, edit, rename, and manage multiple S3 connections.
+* **Smart Display Names:** Fallback chain (Custom Alias -> Default Bucket Name -> Endpoint URL) ensuring neat, readable lists without label duplication.
+* **Rclone Configuration Exporter:** Decrypts connection details securely and formats them into a standard `.ini` config ready for `rclone`.
+* **Credential Reuse:** Quickly pre-fill the connection screen using credential details from an existing profile.
+* **Key Shredding on Delete:** Deleting a profile clears all Room caches related to it and shreds the keys from the Android Keystore.
 
-## Project Structure (Proposed)
+### 2. Multi-Tenant Local S3 Cache
+* **Profile Isolation:** Directory caching is indexed via composite primary keys referencing the specific `profileId`. Multiple accounts accessing buckets with identical names (e.g., `test-bucket` on MinIO vs AWS S3) will never experience data crossover or cache pollution.
 
-- **`data`**: Repositories, Room Database Entities, DAOs, DataStore definitions, and Network Data Sources (S3 API).
-- **`domain`**: Clean architecture Use Cases isolating business logic (e.g., `SyncDirectoryUseCase`, `CalculateStorageStatsUseCase`).
-- **`ui`**: ViewModels, Compose layouts/XML fragments, and UI state classes.
+### 3. File Explorer & Navigation
+* **Dynamic View Modes:** Toggle seamlessly between four layouts:
+  - **Detailed List:** Standard vertical layout with full size and modification details.
+  - **Compact List:** Dense vertical list showing file name only.
+  - **Gallery Small:** 2-column square grid of media cards.
+  - **Gallery Large:** 1-column layout of large square media cards.
+* **Scroll State Preservation:** All layout changes occur dynamically inside a single `LazyVerticalGrid`, keeping the scroll position perfectly preserved.
+* **Interactive Breadcrumbs:** Tap-to-navigate path indicator allowing quick jumps to any parent directory in the path hierarchy.
+
+### 4. High-Performance Media Thumbnails
+* **Automatic Media Classifier:** Utilizes Android's native `MimeTypeMap` to detect supported formats (e.g., `.jpg`, `.png`, `.webp`, `.mp4`, `.mkv`) from extensions, bypassing the need for manual codec lists.
+* **Secure Offline Presigning:** Generates temporary 1-hour pre-signed URLs locally (sub-millisecond HMAC calculations) to avoid memory-heavy file streaming.
+* **Strict Concurrency Throttling:** Configures Coil with a custom OkHttp `Dispatcher` to restrict network thumbnail requests to a maximum of **5 concurrent connections**, protecting both remote storage and device network bandwidth.
+* **Video Frame Extraction:** Registers Coil's `VideoFrameDecoder` and overrides mime type checks to automatically extract and downsample the first frame from remote video streams.
+* **Zero-Flicker Scrolling:** Presigned URLs are stored in an in-memory `thumbnailCache` in the ViewModel. When items scroll back into view, they load their URLs synchronously, hitting Coil's memory cache instantly and preventing list flashing.
+
+---
+
+## Project Structure
+
+```
+net.m21xx.s3explorer/
+├── data/
+│   ├── local/              # Room DB, DAOs, Entities, Preferences DataStore
+│   ├── remote/             # AWS SDK networking wrappers
+│   └── repository/         # Data Repositories orchestrating caching & syncing
+├── domain/                 # Use Cases (Sync, Presigning, Config Exporter, Profile Save)
+└── ui/
+    ├── connection/         # New Connection & Connections List screens
+    ├── explorer/           # S3 File Explorer, View Mode definitions, Grid Items
+    └── navigation/         # S3NavHost and application route graphs
+```
+
+---
+
+## How to Build & Run
+
+### Prerequisites
+* Android Studio (Koala or newer recommended)
+* JDK 17
+* Android Device/Emulator running Android 8.0 (API 26) or higher
+
+### Building
+1. Clone the repository.
+2. Build the project using the Gradle wrapper:
+   ```bash
+   ./gradlew assembleDebug
+   ```
+3. Run the app directly from Android Studio.
