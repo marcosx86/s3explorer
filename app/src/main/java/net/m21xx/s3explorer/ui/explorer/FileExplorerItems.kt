@@ -4,11 +4,23 @@ import android.text.format.Formatter
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.Android
+import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.AudioFile
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.CoPresent
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FolderZip
+import androidx.compose.material.icons.filled.FontDownload
 import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.TableChart
+import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -34,6 +46,46 @@ import net.m21xx.s3explorer.data.local.entity.S3ObjectEntity
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+private fun getPlaceholderIcon(extension: String, mimeType: String?): androidx.compose.ui.graphics.vector.ImageVector {
+    if (mimeType != null) {
+        when {
+            mimeType.startsWith("image/") -> return Icons.Default.Image
+            mimeType.startsWith("video/") -> return Icons.Default.VideoFile
+            mimeType.startsWith("audio/") -> return Icons.Default.AudioFile
+            mimeType.startsWith("text/") -> return Icons.Default.Description
+            mimeType == "application/zip" || 
+            mimeType == "application/x-tar" || 
+            mimeType == "application/x-rar-compressed" -> return Icons.Default.FolderZip
+            mimeType == "application/vnd.android.package-archive" -> return Icons.Default.Android
+            mimeType == "application/pdf" -> return Icons.Default.PictureAsPdf
+            mimeType == "application/json" || 
+            mimeType == "application/javascript" || 
+            mimeType == "application/xml" -> return Icons.Default.Code
+            mimeType == "text/csv" || 
+            mimeType == "application/vnd.ms-excel" || 
+            mimeType == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" -> return Icons.Default.TableChart
+            mimeType == "application/vnd.ms-powerpoint" || 
+            mimeType == "application/vnd.openxmlformats-officedocument.presentationml.presentation" -> return Icons.Default.CoPresent
+        }
+    }
+    
+    return when (extension) {
+        "jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff", "svg", "heic", "heif" -> Icons.Default.Image
+        "mp4", "mkv", "mov", "avi", "flv", "webm", "wmv", "3gp", "mpeg" -> Icons.Default.VideoFile
+        "mp3", "wav", "flac", "m4a", "ogg", "aac", "wma", "opus", "mid", "midi" -> Icons.Default.AudioFile
+        "zip", "rar", "7z", "tar", "gz", "tgz", "z", "bz2", "bzip2", "xz", "lzh", "lzma", "cab" -> Icons.Default.FolderZip
+        "apk" -> Icons.Default.Android
+        "deb", "rpm", "exe", "msi", "bat", "cmd", "sh", "bin", "appimage", "dmg" -> Icons.Default.Build
+        "pdf" -> Icons.Default.PictureAsPdf
+        "json", "xml", "html", "htm", "css", "js", "ts", "kt", "java", "py", "cpp", "c", "h", "cs", "go", "rs", "rb", "php", "yaml", "yml", "sql" -> Icons.Default.Code
+        "xls", "xlsx", "csv", "ods", "numbers" -> Icons.Default.TableChart
+        "ppt", "pptx", "odp", "key" -> Icons.Default.CoPresent
+        "txt", "log", "ini", "conf", "cfg", "md", "rtf", "doc", "docx", "odt", "pages", "epub", "mobi" -> Icons.Default.Description
+        "ttf", "otf", "woff", "woff2", "eot" -> Icons.Default.FontDownload
+        else -> Icons.AutoMirrored.Filled.InsertDriveFile
+    }
+}
 
 @Composable
 fun FolderItem(
@@ -141,6 +193,7 @@ fun DetailedListItem(
     val extension = if (filename.contains('.')) filename.substringAfterLast('.').lowercase() else ""
     val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
     val isVideo = mimeType?.startsWith("video/") == true
+    val placeholderIcon = getPlaceholderIcon(extension, mimeType)
 
     ListItem(
         modifier = Modifier.clickable { onClick() },
@@ -160,6 +213,7 @@ fun DetailedListItem(
                     .data(url)
                     .size(128)
                     .crossfade(true)
+                    .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
                     .apply {
                         if (isVideo) {
                             decoderFactory { result, options, _ ->
@@ -169,8 +223,8 @@ fun DetailedListItem(
                     }
                     .build(),
                 contentDescription = "File thumbnail",
-                placeholder = rememberVectorPainter(Icons.Default.InsertDriveFile),
-                error = rememberVectorPainter(Icons.Default.InsertDriveFile),
+                placeholder = rememberVectorPainter(placeholderIcon),
+                error = rememberVectorPainter(placeholderIcon),
                 modifier = Modifier.size(48.dp)
             )
         },
@@ -205,6 +259,7 @@ fun CompactListItem(
     val extension = if (filename.contains('.')) filename.substringAfterLast('.').lowercase() else ""
     val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
     val isVideo = mimeType?.startsWith("video/") == true
+    val placeholderIcon = getPlaceholderIcon(extension, mimeType)
 
     ListItem(
         modifier = Modifier.clickable { onClick() },
@@ -220,8 +275,9 @@ fun CompactListItem(
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(url)
-                    .size(128)
+                    .size(96)
                     .crossfade(true)
+                    .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
                     .apply {
                         if (isVideo) {
                             decoderFactory { result, options, _ ->
@@ -231,8 +287,8 @@ fun CompactListItem(
                     }
                     .build(),
                 contentDescription = "File thumbnail",
-                placeholder = rememberVectorPainter(Icons.Default.InsertDriveFile),
-                error = rememberVectorPainter(Icons.Default.InsertDriveFile),
+                placeholder = rememberVectorPainter(placeholderIcon),
+                error = rememberVectorPainter(placeholderIcon),
                 modifier = Modifier.size(36.dp)
             )
         },
@@ -267,6 +323,7 @@ fun GalleryCardItem(
     val extension = if (filename.contains('.')) filename.substringAfterLast('.').lowercase() else ""
     val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
     val isVideo = mimeType?.startsWith("video/") == true
+    val placeholderIcon = getPlaceholderIcon(extension, mimeType)
 
     ElevatedCard(
         modifier = Modifier
@@ -278,8 +335,11 @@ fun GalleryCardItem(
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(url)
-                    .size(1080)
+                    //.size(1080)
+                    .size(720)
+                    //.size(if (isVideo) 640 else 720)
                     .crossfade(true)
+                    .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
                     .apply {
                         if (isVideo) {
                             decoderFactory { result, options, _ ->
@@ -289,8 +349,8 @@ fun GalleryCardItem(
                     }
                     .build(),
                 contentDescription = "File thumbnail",
-                placeholder = rememberVectorPainter(Icons.Default.Image),
-                error = rememberVectorPainter(Icons.Default.Image),
+                placeholder = rememberVectorPainter(placeholderIcon),
+                error = rememberVectorPainter(placeholderIcon),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
