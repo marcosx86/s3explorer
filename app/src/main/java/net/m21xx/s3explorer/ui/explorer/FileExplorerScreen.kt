@@ -27,19 +27,27 @@ import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
+import kotlinx.coroutines.launch
+import net.m21xx.s3explorer.ui.explorer.components.ConnectionDrawerSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FileExplorerScreen(
     viewModel: FileExplorerViewModel = hiltViewModel(),
-    onOpenDrawer: () -> Unit,
     onNavigateToConnections: () -> Unit,
-    onNavigateToMediaViewer: (profileId: String, bucketName: String, parentPrefix: String, initialObjectKey: String) -> Unit
+    onNavigateToMediaViewer: (profileId: String, bucketName: String, parentPrefix: String, initialObjectKey: String) -> Unit,
+    onNavigateToAccountSettings: (profileId: String) -> Unit,
+    onNavigateToTransfers: (profileId: String) -> Unit,
+    onNavigateToSettings: () -> Unit,
+    onNavigateToMediaBackup: () -> Unit,
+    onNavigateToTrash: (profileId: String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val pagingItems = viewModel.pagedObjects.collectAsLazyPagingItems()
     val snackbarHostState = remember { SnackbarHostState() }
     val gridState = rememberLazyGridState()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
     BackHandler(enabled = uiState.currentPrefix.isNotEmpty()) {
         viewModel.navigateUp()
@@ -61,7 +69,42 @@ fun FileExplorerScreen(
         }
     }
 
-    Scaffold(
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ConnectionDrawerSheet(
+                drawerState = uiState.drawerState,
+                onAccountSettingsClick = { 
+                    coroutineScope.launch { drawerState.close() }
+                    onNavigateToAccountSettings(uiState.profileId) 
+                },
+                onTransfersClick = { 
+                    coroutineScope.launch { drawerState.close() }
+                    onNavigateToTransfers(uiState.profileId) 
+                },
+                onSyncClick = { 
+                    coroutineScope.launch { drawerState.close() }
+                    viewModel.forceSync() 
+                },
+                onSettingsClick = { 
+                    coroutineScope.launch { drawerState.close() }
+                    onNavigateToSettings() 
+                },
+                onMediaBackupClick = { 
+                    coroutineScope.launch { drawerState.close() }
+                    onNavigateToMediaBackup() 
+                },
+                onTrashClick = { 
+                    coroutineScope.launch { drawerState.close() }
+                    onNavigateToTrash(uiState.profileId) 
+                },
+                onAboutClick = { viewModel.toggleAboutDialog(true) },
+                onRemoveCredentialsClick = { viewModel.toggleRemoveCredentialsDialog(true) },
+                onRefreshStorageClick = { viewModel.refreshStorageStats() }
+            )
+        }
+    ) {
+        Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -72,7 +115,7 @@ fun FileExplorerScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onOpenDrawer) {
+                    IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
                         Icon(Icons.Default.Menu, contentDescription = "Menu")
                     }
                 },
@@ -170,5 +213,42 @@ fun FileExplorerScreen(
                 }
             }
         }
+    }
+    }
+
+    if (uiState.drawerState.showAboutDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.toggleAboutDialog(false) },
+            title = { Text("About") },
+            text = { Text("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.") },
+            confirmButton = {
+                TextButton(onClick = { viewModel.toggleAboutDialog(false) }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
+
+    if (uiState.drawerState.showRemoveCredentialsDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.toggleRemoveCredentialsDialog(false) },
+            title = { Text("Remove credentials") },
+            text = { Text("Are you sure you want to safely remove these S3 connection credentials from the application? This will NOT wipe any data on your bucket, it simply removes access from this app.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.toggleRemoveCredentialsDialog(false)
+                        // TODO: Implement PurgeProfileUseCase and navigate away
+                    }
+                ) {
+                    Text("Remove", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.toggleRemoveCredentialsDialog(false) }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }

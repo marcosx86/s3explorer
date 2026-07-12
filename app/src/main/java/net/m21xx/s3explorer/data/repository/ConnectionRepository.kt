@@ -16,6 +16,10 @@ class ConnectionRepository @Inject constructor(
 ) {
     val allProfiles: Flow<List<ConnectionProfileEntity>> = connectionProfileDao.getAllProfiles()
 
+    suspend fun getProfileById(profileId: String): ConnectionProfileEntity? {
+        return connectionProfileDao.getProfileById(profileId)
+    }
+
     suspend fun saveProfile(profile: ConnectionProfileEntity, secretKey: String) {
         // Save the sensitive key in EncryptedSharedPreferences
         secureStorage.saveSecretKey(profile.profileId, secretKey)

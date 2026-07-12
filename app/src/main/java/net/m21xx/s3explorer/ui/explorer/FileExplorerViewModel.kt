@@ -16,6 +16,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import net.m21xx.s3explorer.data.local.entity.S3ObjectEntity
 import net.m21xx.s3explorer.data.local.preferences.SettingsDataStore
+import net.m21xx.s3explorer.data.repository.ConnectionRepository
+import net.m21xx.s3explorer.domain.CalculateStorageStatsUseCase
+import net.m21xx.s3explorer.domain.ForceSyncUseCase
 import net.m21xx.s3explorer.domain.GetPresignedUrlUseCase
 import net.m21xx.s3explorer.domain.ObserveDirectoryContentUseCase
 import net.m21xx.s3explorer.domain.SyncDirectoryUseCase
@@ -27,6 +30,9 @@ class FileExplorerViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val observeDirectoryContentUseCase: ObserveDirectoryContentUseCase,
     private val syncDirectoryUseCase: SyncDirectoryUseCase,
+    private val forceSyncUseCase: ForceSyncUseCase,
+    private val calculateStorageStatsUseCase: CalculateStorageStatsUseCase,
+    private val connectionRepository: ConnectionRepository,
     private val settingsDataStore: SettingsDataStore,
     private val getPresignedUrlUseCase: GetPresignedUrlUseCase
 ) : ViewModel() {
@@ -51,6 +57,16 @@ class FileExplorerViewModel @Inject constructor(
         viewModelScope.launch {
             settingsDataStore.viewMode.collect { mode ->
                 _uiState.update { it.copy(viewMode = mode) }
+            }
+        }
+        
+        viewModelScope.launch {
+            if (profileId.isNotEmpty()) {
+                val profile = connectionRepository.getProfileById(profileId)
+                _uiState.update { 
+                    it.copy(drawerState = it.drawerState.copy(activeProfile = profile))
+                }
+                refreshStorageStats()
             }
         }
         
@@ -116,5 +132,46 @@ class FileExplorerViewModel @Inject constructor(
             return url
         }
         return null
+    }
+
+    fun refreshStorageStats() {
+        val state = _uiState.value
+        if (state.profileId.isEmpty()) return
+        
+        viewModelScope.launch {
+            val stats = calculateStorageStatsUseCase.execute(state.profileId, state.bucketName)
+            _uiState.update { 
+                it.copy(drawerState = it.drawerState.copy(storageStats = stats)) 
+            }
+        }
+    }
+
+    fun forceSync() {
+        val state = _uiState.value
+        if (state.profileId.isEmpty()) return
+        
+        _uiState.update { it.copy(isSyncing = true, errorMessage = null) }
+        viewModelScope.launch {
+            try {
+                forceSyncUseCase.execute(state.profileId, state.bucketName, state.currentPrefix)
+                _uiState.update { it.copy(errorMessage = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = e.message ?: "Failed to force sync directory") }
+            } finally {
+                _uiState.update { it.copy(isSyncing = false) }
+            }
+        }
+    }
+
+    fun toggleAboutDialog(show: Boolean) {
+        _uiState.update { 
+            it.copy(drawerState = it.drawerState.copy(showAboutDialog = show)) 
+        }
+    }
+
+    fun toggleRemoveCredentialsDialog(show: Boolean) {
+        _uiState.update { 
+            it.copy(drawerState = it.drawerState.copy(showRemoveCredentialsDialog = show)) 
+        }
     }
 }
