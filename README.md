@@ -53,6 +53,13 @@ The app is built using **Clean Architecture** principles and the **MVVM (Model-V
 * **Video Frame Extraction:** Registers Coil's `VideoFrameDecoder` and overrides mime type checks to automatically extract and downsample the first frame from remote video streams.
 * **Zero-Flicker Scrolling:** Presigned URLs are stored in an in-memory `thumbnailCache` in the ViewModel. When items scroll back into view, they load their URLs synchronously, hitting Coil's memory cache instantly and preventing list flashing.
 
+### 6. Dedicated Video Player
+* **Immersive Playback:** Launches videos in a dedicated activity using Media3 (ExoPlayer) with full system bar hiding.
+* **Custom Control Overlay:** Single-tap to toggle controls, featuring a red progress bar with live frame-by-frame scrubbing.
+* **Smart Timecodes:** Left-aligned time elapsed and total duration labels matching native hour/minute/second patterns.
+* **Advanced Player Controls:** Quick action buttons to toggle loop mode (repeating active video), orientation locks, and fullscreen transitions.
+* **Swipe to Dismiss:** Support for swipe-down gestures to instantly close the player activity and return to the explorer.
+
 ---
 
 ## Project Structure

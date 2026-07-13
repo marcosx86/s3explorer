@@ -1,6 +1,7 @@
 package net.m21xx.s3explorer.ui.viewer
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -170,6 +171,13 @@ fun MediaPage(
                     modifier = Modifier
                         .size(64.dp)
                         .align(Alignment.Center)
+                        .clickable {
+                            val intent = android.content.Intent(context, VideoPlayerActivity::class.java).apply {
+                                putExtra("url", url)
+                                putExtra("title", item.entity.objectKey.substringAfterLast('/'))
+                            }
+                            context.startActivity(intent)
+                        }
                 )
             }
         } else {
