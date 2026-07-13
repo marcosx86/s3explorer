@@ -10,10 +10,12 @@ import androidx.compose.ui.Modifier
 import dagger.hilt.android.AndroidEntryPoint
 import net.m21xx.s3explorer.ui.navigation.S3NavHost
 import net.m21xx.s3explorer.ui.theme.S3ExplorerTheme
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         setContent {
             S3ExplorerTheme {

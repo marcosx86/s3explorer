@@ -60,6 +60,11 @@ The app is built using **Clean Architecture** principles and the **MVVM (Model-V
 * **Advanced Player Controls:** Quick action buttons to toggle loop mode (repeating active video), orientation locks, and fullscreen transitions.
 * **Swipe to Dismiss:** Support for swipe-down gestures to instantly close the player activity and return to the explorer.
 
+### 7. Branding & Theming
+* **Premium UI Palette:** Custom Material 3 color schemes derived from the official branding (Ocean Blue, Sky Blue, Warm Wood).
+* **Native Splash Screen:** Seamless launch experience utilizing Android 12's `core-splashscreen` library.
+* **Empty State Watermarks:** Desaturated, grayscale, non-intrusive watermark background in empty folders to reinforce branding.
+
 ---
 
 ## Project Structure
@@ -72,6 +77,7 @@ net.m21xx.s3explorer/
 │   └── repository/         # Data Repositories orchestrating caching & syncing
 ├── domain/                 # Use Cases (Sync, Presigning, Config Exporter, Profile Save)
 └── ui/
+    ├── components/         # Reusable UI widgets (e.g. Watermarks)
     ├── connection/         # New Connection & Connections List screens
     ├── explorer/           # S3 File Explorer, View Mode definitions, Grid Items
     └── navigation/         # S3NavHost and application route graphs
@@ -93,3 +99,10 @@ net.m21xx.s3explorer/
    ./gradlew assembleDebug
    ```
 3. Run the app directly from Android Studio.
+
+---
+
+## Development Iterations
+* Bucket Totalization in Drawer
+* Video Player in Media Viewer
+* Splash Screen & Premium Theming

@@ -29,6 +29,7 @@ import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import kotlinx.coroutines.launch
 import net.m21xx.s3explorer.ui.explorer.components.ConnectionDrawerSheet
+import net.m21xx.s3explorer.ui.components.WatermarkBackground
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -150,6 +151,7 @@ fun FileExplorerScreen(
                     onRetry = { viewModel.syncCurrentDirectory() }
                 )
             } else if (pagingItems.loadState.refresh is LoadState.NotLoading && pagingItems.itemCount == 0 && !uiState.isSyncing) {
+                WatermarkBackground()
                 EmptyDirectoryState()
             } else {
                 val gridCells = when (uiState.viewMode) {
