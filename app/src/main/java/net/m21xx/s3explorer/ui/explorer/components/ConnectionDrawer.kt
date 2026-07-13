@@ -167,53 +167,89 @@ private fun DrawerFooter(drawerState: DrawerUIState, onRefreshStorageClick: () -
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val timeText = if (stats != null) {
-                DateUtils.getRelativeTimeSpanString(stats.lastUpdated, System.currentTimeMillis(), DateUtils.SECOND_IN_MILLIS)
-            } else {
-                "Unknown"
+            // Left Side: Storage Icon + "Storage"
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Storage,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Storage",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-            Text(
-                text = "Storage ($timeText)",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            
+            // Right Side: "X minutes ago" + Refresh/Loading
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val timeText = if (stats != null) {
+                    DateUtils.getRelativeTimeSpanString(stats.lastUpdated, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS)
+                } else {
+                    "Unknown"
+                }
+                Text(
+                    text = timeText.toString(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                
+                if (drawerState.isCalculatingStorageStats) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh storage",
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable { onRefreshStorageClick() },
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        // Progress bar (S3 doesn't have a max size by default, so we show a small arbitrary percentage or indeterminate if loading)
+        if (drawerState.isCalculatingStorageStats) {
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
-            Icon(
-                imageVector = Icons.Default.Refresh,
-                contentDescription = "Refresh storage",
-                modifier = Modifier
-                    .size(20.dp)
-                    .clickable { onRefreshStorageClick() },
-                tint = MaterialTheme.colorScheme.primary
+        } else {
+            // Static arbitrary progress for now, could be scaled against a 1TB quota
+            val progressVal = if (stats != null) (stats.sizeBytes.toFloat() / (1024f * 1024f * 1024f * 100f)).coerceIn(0f, 1f) else 0f
+            LinearProgressIndicator(
+                progress = { progressVal.coerceAtLeast(0.01f) },
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         }
         
-        Spacer(modifier = Modifier.height(8.dp))
-        LinearProgressIndicator(
-            progress = { 0.5f }, // Placeholder visual progress
-            modifier = Modifier.fillMaxWidth(),
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
-        )
         Spacer(modifier = Modifier.height(4.dp))
         
         if (stats != null) {
             val sizeMb = stats.sizeBytes / (1024 * 1024f)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = String.format("%.2f MB", sizeMb),
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Text(
-                    text = "files: ${stats.objectCount}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
+            Text(
+                text = String.format("%.2f MB used, files: %d", sizeMb, stats.objectCount),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         } else {
             Text(
                 text = "Calculate storage...",
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

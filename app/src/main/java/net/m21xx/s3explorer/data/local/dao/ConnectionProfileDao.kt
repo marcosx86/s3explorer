@@ -21,4 +21,7 @@ interface ConnectionProfileDao {
 
     @Delete
     suspend fun deleteProfile(profile: ConnectionProfileEntity)
+
+    @Query("UPDATE connection_profiles SET storageSizeBytes = :sizeBytes, storageObjectCount = :objectCount, storageLastUpdated = :lastUpdated WHERE profileId = :profileId")
+    suspend fun updateStorageStats(profileId: String, sizeBytes: Long, objectCount: Int, lastUpdated: Long)
 }

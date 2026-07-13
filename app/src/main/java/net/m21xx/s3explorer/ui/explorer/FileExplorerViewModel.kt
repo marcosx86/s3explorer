@@ -18,6 +18,7 @@ import net.m21xx.s3explorer.data.local.entity.S3ObjectEntity
 import net.m21xx.s3explorer.data.local.preferences.SettingsDataStore
 import net.m21xx.s3explorer.data.repository.ConnectionRepository
 import net.m21xx.s3explorer.domain.CalculateStorageStatsUseCase
+import net.m21xx.s3explorer.domain.StorageStatsSummary
 import net.m21xx.s3explorer.domain.ForceSyncUseCase
 import net.m21xx.s3explorer.domain.GetPresignedUrlUseCase
 import net.m21xx.s3explorer.domain.ObserveDirectoryContentUseCase
@@ -63,10 +64,21 @@ class FileExplorerViewModel @Inject constructor(
         viewModelScope.launch {
             if (profileId.isNotEmpty()) {
                 val profile = connectionRepository.getProfileById(profileId)
+                val stats = if (profile?.storageLastUpdated != null) {
+                    StorageStatsSummary(
+                        sizeBytes = profile.storageSizeBytes ?: 0L,
+                        objectCount = profile.storageObjectCount ?: 0,
+                        lastUpdated = profile.storageLastUpdated
+                    )
+                } else null
+
                 _uiState.update { 
-                    it.copy(drawerState = it.drawerState.copy(activeProfile = profile))
+                    it.copy(drawerState = it.drawerState.copy(activeProfile = profile, storageStats = stats))
                 }
-                refreshStorageStats()
+
+                if (stats == null) {
+                    refreshStorageStats()
+                }
             }
         }
         
@@ -136,12 +148,23 @@ class FileExplorerViewModel @Inject constructor(
 
     fun refreshStorageStats() {
         val state = _uiState.value
-        if (state.profileId.isEmpty()) return
+        if (state.profileId.isEmpty() || state.drawerState.isCalculatingStorageStats) return
         
+        _uiState.update { 
+            it.copy(drawerState = it.drawerState.copy(isCalculatingStorageStats = true)) 
+        }
+
         viewModelScope.launch {
-            val stats = calculateStorageStatsUseCase.execute(state.profileId, state.bucketName)
-            _uiState.update { 
-                it.copy(drawerState = it.drawerState.copy(storageStats = stats)) 
+            try {
+                val stats = calculateStorageStatsUseCase.execute(state.profileId, state.bucketName)
+                _uiState.update { 
+                    it.copy(drawerState = it.drawerState.copy(storageStats = stats ?: it.drawerState.storageStats, isCalculatingStorageStats = false)) 
+                }
+            } catch (e: Exception) {
+                // Ignore error but reset loading state
+                _uiState.update { 
+                    it.copy(drawerState = it.drawerState.copy(isCalculatingStorageStats = false)) 
+                }
             }
         }
     }

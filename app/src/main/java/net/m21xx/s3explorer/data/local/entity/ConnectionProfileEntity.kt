@@ -12,5 +12,8 @@ data class ConnectionProfileEntity(
     val accessKey: String,
     val defaultBucket: String,
     val region: String = "us-east-1",
-    val lastUsedAt: Long = System.currentTimeMillis()
+    val lastUsedAt: Long = System.currentTimeMillis(),
+    val storageSizeBytes: Long? = null,
+    val storageObjectCount: Int? = null,
+    val storageLastUpdated: Long? = null
 )

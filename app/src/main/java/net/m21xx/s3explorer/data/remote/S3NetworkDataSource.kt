@@ -46,4 +46,36 @@ class S3NetworkDataSource @Inject constructor(
         
         return S3ListResult(folders, files)
     }
+
+    suspend fun calculateTotalStats(
+        profileId: String,
+        endpoint: String,
+        accessKey: String,
+        secretKey: String,
+        bucketName: String,
+        regionName: String = "us-east-1"
+    ): Pair<Long, Int> {
+        val s3Client = s3ClientManager.getClient(profileId, endpoint, accessKey, secretKey, regionName)
+        
+        var totalSize = 0L
+        var totalCount = 0
+        var continuationToken: String? = null
+
+        do {
+            val request = ListObjectsV2Request {
+                bucket = bucketName
+                this.continuationToken = continuationToken
+            }
+            val response = s3Client.listObjectsV2(request)
+            
+            response.contents?.forEach { obj ->
+                totalSize += obj.size ?: 0L
+                totalCount += 1
+            }
+            
+            continuationToken = response.nextContinuationToken
+        } while (response.isTruncated == true && continuationToken != null)
+
+        return Pair(totalSize, totalCount)
+    }
 }

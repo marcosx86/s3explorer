@@ -6,6 +6,7 @@ import net.m21xx.s3explorer.domain.StorageStatsSummary
 data class DrawerUIState(
     val activeProfile: ConnectionProfileEntity? = null,
     val storageStats: StorageStatsSummary? = null,
+    val isCalculatingStorageStats: Boolean = false,
     val showAboutDialog: Boolean = false,
     val showRemoveCredentialsDialog: Boolean = false
 )

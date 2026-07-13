@@ -33,7 +33,7 @@ The app is built using **Clean Architecture** principles and the **MVVM (Model-V
 * **Profile Isolation:** Directory caching is indexed via composite primary keys referencing the specific `profileId`. Multiple accounts accessing buckets with identical names (e.g., `test-bucket` on MinIO vs AWS S3) will never experience data crossover or cache pollution.
 
 ### 3. File Explorer & Navigation
-* **Connection Drawer**: A slide-out navigation panel providing quick access to active profile details, bucket storage stats (mocked size and object counts), and setup links.
+* **Connection Drawer**: A slide-out navigation panel providing quick access to active profile details, bucket storage stats (iteratively crawled and cached in Room for accuracy), and setup links.
 * **Dynamic View Modes**: Toggle seamlessly between four layouts:
   - **Detailed List:** Standard vertical layout with full size and modification details.
   - **Compact List:** Dense vertical list showing file name only.
