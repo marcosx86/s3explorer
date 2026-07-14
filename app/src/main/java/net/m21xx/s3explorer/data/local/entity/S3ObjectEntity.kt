@@ -14,5 +14,6 @@ data class S3ObjectEntity(
     val size: Long,
     val lastModified: Long, // Use timestamp
     val isDirectory: Boolean,
-    val parentPrefix: String // Added parentPrefix to help build folder tree locally
+    val parentPrefix: String, // Added parentPrefix to help build folder tree locally
+    val extension: String
 )

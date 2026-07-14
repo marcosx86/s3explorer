@@ -22,7 +22,9 @@ data class GlobalPreferences(
     val enableLockScreen: Boolean = false,
     val displayLongDateFormat: Boolean = false,
     val hideDotfiles: Boolean = false,
-    val showImageThumbnails: Boolean = true
+    val showImageThumbnails: Boolean = true,
+    val sortBy: net.m21xx.s3explorer.ui.explorer.SortBy = net.m21xx.s3explorer.ui.explorer.SortBy.NAME,
+    val sortDirection: net.m21xx.s3explorer.ui.explorer.SortDirection = net.m21xx.s3explorer.ui.explorer.SortDirection.ASCENDING
 )
 
 @Singleton
@@ -36,6 +38,8 @@ class SettingsDataStore @Inject constructor(
     private val DISPLAY_LONG_DATE_KEY = booleanPreferencesKey("display_long_date")
     private val HIDE_DOTFILES_KEY = booleanPreferencesKey("hide_dotfiles")
     private val SHOW_THUMBNAILS_KEY = booleanPreferencesKey("show_thumbnails")
+    private val SORT_BY_KEY = stringPreferencesKey("sort_by")
+    private val SORT_DIR_KEY = stringPreferencesKey("sort_dir")
 
     val viewMode: Flow<ExplorerViewMode> = context.dataStore.data.map { preferences ->
         val modeName = preferences[VIEW_MODE_KEY] ?: ExplorerViewMode.DETAILED_LIST.name
@@ -53,7 +57,9 @@ class SettingsDataStore @Inject constructor(
             enableLockScreen = prefs[ENABLE_LOCK_SCREEN_KEY] ?: false,
             displayLongDateFormat = prefs[DISPLAY_LONG_DATE_KEY] ?: false,
             hideDotfiles = prefs[HIDE_DOTFILES_KEY] ?: false,
-            showImageThumbnails = prefs[SHOW_THUMBNAILS_KEY] ?: true
+            showImageThumbnails = prefs[SHOW_THUMBNAILS_KEY] ?: true,
+            sortBy = try { net.m21xx.s3explorer.ui.explorer.SortBy.valueOf(prefs[SORT_BY_KEY] ?: "NAME") } catch (e: Exception) { net.m21xx.s3explorer.ui.explorer.SortBy.NAME },
+            sortDirection = try { net.m21xx.s3explorer.ui.explorer.SortDirection.valueOf(prefs[SORT_DIR_KEY] ?: "ASCENDING") } catch (e: Exception) { net.m21xx.s3explorer.ui.explorer.SortDirection.ASCENDING }
         )
     }
 
@@ -69,4 +75,6 @@ class SettingsDataStore @Inject constructor(
     suspend fun setLongDateFormat(enabled: Boolean) = context.dataStore.edit { it[DISPLAY_LONG_DATE_KEY] = enabled }
     suspend fun setHideDotfiles(enabled: Boolean) = context.dataStore.edit { it[HIDE_DOTFILES_KEY] = enabled }
     suspend fun setShowThumbnails(enabled: Boolean) = context.dataStore.edit { it[SHOW_THUMBNAILS_KEY] = enabled }
+    suspend fun setSortBy(sortBy: net.m21xx.s3explorer.ui.explorer.SortBy) = context.dataStore.edit { it[SORT_BY_KEY] = sortBy.name }
+    suspend fun setSortDirection(dir: net.m21xx.s3explorer.ui.explorer.SortDirection) = context.dataStore.edit { it[SORT_DIR_KEY] = dir.name }
 }

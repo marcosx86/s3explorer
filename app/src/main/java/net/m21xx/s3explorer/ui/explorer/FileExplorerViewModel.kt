@@ -46,7 +46,14 @@ class FileExplorerViewModel @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     val pagedObjects: Flow<PagingData<S3ObjectEntity>> = _uiState
         .flatMapLatest { state ->
-            observeDirectoryContentUseCase.execute(state.profileId, state.bucketName, state.currentPrefix)
+            observeDirectoryContentUseCase.execute(
+                state.profileId, 
+                state.bucketName, 
+                state.currentPrefix,
+                state.sortBy,
+                state.sortDirection,
+                state.showHidden
+            )
         }
         .cachedIn(viewModelScope)
 
@@ -58,6 +65,18 @@ class FileExplorerViewModel @Inject constructor(
         viewModelScope.launch {
             settingsDataStore.viewMode.collect { mode ->
                 _uiState.update { it.copy(viewMode = mode) }
+            }
+        }
+        
+        viewModelScope.launch {
+            settingsDataStore.globalPreferences.collect { prefs ->
+                _uiState.update { 
+                    it.copy(
+                        sortBy = prefs.sortBy,
+                        sortDirection = prefs.sortDirection,
+                        showHidden = !prefs.hideDotfiles
+                    )
+                }
             }
         }
         
@@ -121,6 +140,24 @@ class FileExplorerViewModel @Inject constructor(
         viewModelScope.launch {
             val nextMode = _uiState.value.viewMode.next()
             settingsDataStore.setViewMode(nextMode)
+        }
+    }
+
+    fun setSortBy(sortBy: SortBy) {
+        viewModelScope.launch {
+            settingsDataStore.setSortBy(sortBy)
+        }
+    }
+
+    fun setSortDirection(sortDirection: SortDirection) {
+        viewModelScope.launch {
+            settingsDataStore.setSortDirection(sortDirection)
+        }
+    }
+
+    fun toggleShowHidden() {
+        viewModelScope.launch {
+            settingsDataStore.setHideDotfiles(_uiState.value.showHidden) // Invert current showHidden to set hideDotfiles
         }
     }
 

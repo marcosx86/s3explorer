@@ -11,9 +11,10 @@ Built with Jetpack Compose, Kotlin, and following Modern Android Development (MA
 The app is built using **Clean Architecture** principles and the **MVVM (Model-View-ViewModel)** design pattern, keeping the UI, business logic, and data layers decoupled.
 
 * **UI Layer:** Built entirely in **Jetpack Compose** using Material 3 guidelines for a clean, modern look. Navigation is handled reactively using Compose Navigation.
-* **Local Caching (Single Source of Truth):** S3 bucket metadata is cached locally via **Room Database** (v4). Queries are exposed through **Jetpack Paging 3** for lazy loading and smooth scrolling of directory contents.
+* **Local Caching (Single Source of Truth):** S3 bucket metadata is cached locally via **Room Database** (v6). Queries are exposed through **Jetpack Paging 3** for lazy loading and smooth scrolling of directory contents.
+* **Annotation Processing:** Uses modern **KSP (Kotlin Symbol Processing)** to compile Room and Hilt components, ensuring optimal build performance.
 * **Secure Credential Store:** AWS access keys and secret keys are stored securely using **Android Cryptography (EncryptedSharedPreferences / Android Keystore)**. 
-* **State & Configuration Persistence:** App configurations (e.g., Explorer View Modes) are stored persistently using Jetpack **Preferences DataStore**.
+* **State & Configuration Persistence:** App configurations (e.g., Explorer View Modes, sorting settings) are stored persistently using Jetpack **Preferences DataStore**.
 * **Dependency Injection:** Fully modularized and decoupled using **Dagger Hilt** for DI.
 * **Network & S3 Client:** Powered by the official **AWS Kotlin SDK** (`aws.sdk.kotlin:s3`) for S3 communication.
 * **Media Processing:** Image and video thumbnails are loaded via **Coil**, configured with OkHttp and standard media frame decoders.
@@ -41,6 +42,7 @@ The app is built using **Clean Architecture** principles and the **MVVM (Model-V
   - **Gallery Large:** 1-column layout of large square media cards.
 * **Scroll State Preservation**: All layout changes occur dynamically inside a single `LazyVerticalGrid`, keeping the scroll position perfectly preserved.
 * **Interactive Breadcrumbs**: Tap-to-navigate path indicator allowing quick jumps to any parent directory in the path hierarchy.
+* **Explorer File Sorting & Filtering**: Sort bucket objects dynamically by Name, Size, Type (extension-ordered), or Last Updated. Switch directions between Ascending and Descending. Toggle the visibility of hidden files (dotfiles) dynamically. Preferences are persisted in DataStore and applied using dynamic Room queries.
 
 ### 4. Settings & Configurations
 * **Account Settings**: Isolated by `profileId`. Configures filename encryption, multipart upload thresholds, upload concurrency limit, and local cache lifecycle (clear docs/thumbnails cache).
@@ -106,3 +108,4 @@ net.m21xx.s3explorer/
 * Bucket Totalization in Drawer
 * Video Player in Media Viewer
 * Splash Screen & Premium Theming
+* Explorer File Sorting & Hidden File Filtering

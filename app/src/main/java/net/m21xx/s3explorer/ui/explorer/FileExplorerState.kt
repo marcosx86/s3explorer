@@ -18,5 +18,8 @@ data class FileExplorerState(
     val isSyncing: Boolean = false,
     val errorMessage: String? = null,
     val viewMode: ExplorerViewMode = ExplorerViewMode.DETAILED_LIST,
-    val drawerState: DrawerUIState = DrawerUIState()
+    val drawerState: DrawerUIState = DrawerUIState(),
+    val sortBy: SortBy = SortBy.NAME,
+    val sortDirection: SortDirection = SortDirection.ASCENDING,
+    val showHidden: Boolean = true
 )

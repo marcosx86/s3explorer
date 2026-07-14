@@ -7,7 +7,7 @@ import net.m21xx.s3explorer.data.local.dao.S3ObjectDao
 import net.m21xx.s3explorer.data.local.entity.ConnectionProfileEntity
 import net.m21xx.s3explorer.data.local.entity.S3ObjectEntity
 
-@Database(entities = [ConnectionProfileEntity::class, S3ObjectEntity::class], version = 5, exportSchema = false)
+@Database(entities = [ConnectionProfileEntity::class, S3ObjectEntity::class], version = 6, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun connectionProfileDao(): ConnectionProfileDao
     abstract fun s3ObjectDao(): S3ObjectDao

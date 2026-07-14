@@ -45,7 +45,8 @@ class SyncDirectoryUseCase @Inject constructor(
                     size = 0,
                     lastModified = System.currentTimeMillis(), // Folders don't have a real last modified
                     isDirectory = true,
-                    parentPrefix = prefix
+                    parentPrefix = prefix,
+                    extension = ""
                 )
             )
         }
@@ -53,6 +54,11 @@ class SyncDirectoryUseCase @Inject constructor(
         // Map Files (Contents)
         s3Result.files.forEach { file ->
             val fileKey = file.key ?: return@forEach
+            
+            // Extract extension safely
+            val filename = fileKey.substringAfterLast('/')
+            val extension = if (filename.contains('.')) filename.substringAfterLast('.').lowercase() else ""
+            
             entities.add(
                 S3ObjectEntity(
                     profileId = profileId,
@@ -61,7 +67,8 @@ class SyncDirectoryUseCase @Inject constructor(
                     size = file.size ?: 0L,
                     lastModified = file.lastModified?.epochMilliseconds ?: 0L,
                     isDirectory = false,
-                    parentPrefix = prefix
+                    parentPrefix = prefix,
+                    extension = extension
                 )
             )
         }

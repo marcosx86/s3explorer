@@ -13,10 +13,14 @@ import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material.icons.filled.ViewCozy
+import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -49,6 +53,7 @@ fun FileExplorerScreen(
     val gridState = rememberLazyGridState()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+    var sortMenuExpanded by remember { mutableStateOf(false) }
 
     BackHandler(enabled = uiState.currentPrefix.isNotEmpty()) {
         viewModel.navigateUp()
@@ -121,6 +126,65 @@ fun FileExplorerScreen(
                     }
                 },
                 actions = {
+                    Box {
+                        IconButton(onClick = { sortMenuExpanded = true }) {
+                            Icon(Icons.Default.Sort, contentDescription = "Sort Options")
+                        }
+                        DropdownMenu(
+                            expanded = sortMenuExpanded,
+                            onDismissRequest = { sortMenuExpanded = false }
+                        ) {
+                            Text("Sort by", modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), style = MaterialTheme.typography.labelSmall)
+                            DropdownMenuItem(
+                                text = { Text("Name") },
+                                onClick = { viewModel.setSortBy(SortBy.NAME); sortMenuExpanded = false },
+                                leadingIcon = { if (uiState.sortBy == SortBy.NAME) Icon(Icons.Default.Check, "Selected") else Spacer(Modifier.width(24.dp)) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Size") },
+                                onClick = { viewModel.setSortBy(SortBy.SIZE); sortMenuExpanded = false },
+                                leadingIcon = { if (uiState.sortBy == SortBy.SIZE) Icon(Icons.Default.Check, "Selected") else Spacer(Modifier.width(24.dp)) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Type") },
+                                onClick = { viewModel.setSortBy(SortBy.TYPE); sortMenuExpanded = false },
+                                leadingIcon = { if (uiState.sortBy == SortBy.TYPE) Icon(Icons.Default.Check, "Selected") else Spacer(Modifier.width(24.dp)) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Last updated") },
+                                onClick = { viewModel.setSortBy(SortBy.LAST_MODIFIED); sortMenuExpanded = false },
+                                leadingIcon = { if (uiState.sortBy == SortBy.LAST_MODIFIED) Icon(Icons.Default.Check, "Selected") else Spacer(Modifier.width(24.dp)) }
+                            )
+                            
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            
+                            Text("Direction", modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), style = MaterialTheme.typography.labelSmall)
+                            DropdownMenuItem(
+                                text = { Text("Ascending") },
+                                onClick = { viewModel.setSortDirection(SortDirection.ASCENDING); sortMenuExpanded = false },
+                                leadingIcon = { if (uiState.sortDirection == SortDirection.ASCENDING) Icon(Icons.Default.Check, "Selected") else Spacer(Modifier.width(24.dp)) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Descending") },
+                                onClick = { viewModel.setSortDirection(SortDirection.DESCENDING); sortMenuExpanded = false },
+                                leadingIcon = { if (uiState.sortDirection == SortDirection.DESCENDING) Icon(Icons.Default.Check, "Selected") else Spacer(Modifier.width(24.dp)) }
+                            )
+                            
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            
+                            DropdownMenuItem(
+                                text = { Text("Show hidden") },
+                                onClick = { viewModel.toggleShowHidden(); sortMenuExpanded = false },
+                                trailingIcon = { 
+                                    Switch(
+                                        checked = uiState.showHidden,
+                                        onCheckedChange = { viewModel.toggleShowHidden(); sortMenuExpanded = false }
+                                    ) 
+                                }
+                            )
+                        }
+                    }
+
                     val viewModeIcon = when (uiState.viewMode) {
                         ExplorerViewMode.DETAILED_LIST -> Icons.Default.ViewAgenda
                         ExplorerViewMode.COMPACT_LIST -> Icons.Default.List
