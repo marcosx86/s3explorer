@@ -15,6 +15,13 @@ import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material.icons.filled.ViewCozy
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -113,22 +120,55 @@ fun FileExplorerScreen(
         Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = { 
-                    Breadcrumbs(
-                        currentPrefix = uiState.currentPrefix,
-                        onNavigate = { prefix -> viewModel.navigateToFolder(prefix) }
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
-                        Icon(Icons.Default.Menu, contentDescription = "Menu")
+            Column {
+                TopAppBar(
+                    title = { 
+                        Breadcrumbs(
+                            currentPrefix = uiState.currentPrefix,
+                            onNavigate = { prefix -> viewModel.navigateToFolder(prefix) }
+                        )
+                    },
+                    navigationIcon = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (uiState.currentPrefix.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.navigateUp() }) {
+                                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                                }
+                            }
+                            IconButton(onClick = { coroutineScope.launch { drawerState.open() } }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menu")
+                            }
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { /* TODO: Add file/folder */ }) {
+                            Icon(Icons.Default.Add, contentDescription = "Add")
+                        }
+                        IconButton(onClick = onNavigateToConnections) {
+                            Icon(Icons.Default.Group, contentDescription = "Connections")
+                        }
                     }
-                },
-                actions = {
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp).padding(bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Box {
-                        IconButton(onClick = { sortMenuExpanded = true }) {
-                            Icon(Icons.Default.Sort, contentDescription = "Sort Options")
+                        TextButton(onClick = { sortMenuExpanded = true }) {
+                            val sortField = when(uiState.sortBy) {
+                                SortBy.NAME -> "Name"
+                                SortBy.SIZE -> "Size"
+                                SortBy.TYPE -> "Type"
+                                SortBy.LAST_MODIFIED -> "Date"
+                            }
+                            Text(sortField)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                if (uiState.sortDirection == SortDirection.ASCENDING) Icons.Default.ArrowUpward else Icons.Default.ArrowDownward,
+                                contentDescription = "Sort Direction",
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
                         DropdownMenu(
                             expanded = sortMenuExpanded,
@@ -185,23 +225,31 @@ fun FileExplorerScreen(
                         }
                     }
 
+                    IconButton(onClick = { /* TODO: Toggle cached mode */ }) {
+                        Icon(Icons.Default.Storage, contentDescription = "Cached Mode")
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    IconButton(onClick = { /* TODO: Selection mode */ }) {
+                        Icon(Icons.Default.Checklist, contentDescription = "Selection Mode")
+                    }
+
+                    IconButton(onClick = { /* TODO: Search */ }) {
+                        Icon(Icons.Default.Search, contentDescription = "Search")
+                    }
+
                     val viewModeIcon = when (uiState.viewMode) {
                         ExplorerViewMode.DETAILED_LIST -> Icons.Default.ViewAgenda
-                        ExplorerViewMode.COMPACT_LIST -> Icons.Default.List
+                        ExplorerViewMode.COMPACT_LIST -> Icons.AutoMirrored.Filled.List
                         ExplorerViewMode.GALLERY_SMALL -> Icons.Default.ViewCozy
                         ExplorerViewMode.GALLERY_LARGE -> Icons.Default.CalendarViewDay
                     }
                     IconButton(onClick = { viewModel.toggleViewMode() }) {
                         Icon(viewModeIcon, contentDescription = "Toggle View Mode")
                     }
-                    IconButton(onClick = onNavigateToConnections) {
-                        Icon(Icons.Default.Group, contentDescription = "Connections")
-                    }
-                    IconButton(onClick = { /* TODO: Add file/folder */ }) {
-                        Icon(Icons.Default.Add, contentDescription = "Add")
-                    }
                 }
-            )
+            }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
@@ -243,6 +291,7 @@ fun FileExplorerScreen(
                                     ExplorerViewMode.DETAILED_LIST,
                                     ExplorerViewMode.COMPACT_LIST -> FolderItem(
                                         item = item,
+                                        isCompact = uiState.viewMode == ExplorerViewMode.COMPACT_LIST,
                                         onClick = { viewModel.navigateToFolder(item.objectKey) }
                                     )
                                     ExplorerViewMode.GALLERY_SMALL,

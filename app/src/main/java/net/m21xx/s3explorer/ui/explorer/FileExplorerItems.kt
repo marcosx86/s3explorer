@@ -90,33 +90,65 @@ private fun getPlaceholderIcon(extension: String, mimeType: String?): androidx.c
 @Composable
 fun FolderItem(
     item: S3ObjectEntity,
+    isCompact: Boolean = false,
     onClick: () -> Unit
 ) {
     val folderName = item.objectKey.removePrefix(item.parentPrefix).removeSuffix("/")
-    ListItem(
-        modifier = Modifier.clickable { onClick() },
-        headlineContent = {
-            Text(
-                text = folderName,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        },
-        leadingContent = {
+    if (isCompact) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onClick() }
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Icon(
                 imageVector = Icons.Default.Folder,
                 contentDescription = "Folder",
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(28.dp)
             )
-        },
-        trailingContent = {
-            IconButton(onClick = { /* TODO: Context menu */ }) {
-                Icon(Icons.Default.MoreVert, contentDescription = "Options")
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = folderName,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            IconButton(
+                onClick = { /* TODO: Context menu */ },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(Icons.Default.MoreVert, contentDescription = "Options", modifier = Modifier.size(20.dp))
             }
         }
-    )
-    HorizontalDivider(modifier = Modifier.padding(start = 72.dp))
+    } else {
+        ListItem(
+            modifier = Modifier.clickable { onClick() },
+            headlineContent = {
+                Text(
+                    text = folderName,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            leadingContent = {
+                Icon(
+                    imageVector = Icons.Default.Folder,
+                    contentDescription = "Folder",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(40.dp)
+                )
+            },
+            trailingContent = {
+                IconButton(onClick = { /* TODO: Context menu */ }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Options")
+                }
+            }
+        )
+        HorizontalDivider(modifier = Modifier.padding(start = 72.dp))
+    }
 }
 
 @Composable
@@ -261,44 +293,47 @@ fun CompactListItem(
     val isVideo = mimeType?.startsWith("video/") == true
     val placeholderIcon = getPlaceholderIcon(extension, mimeType)
 
-    ListItem(
-        modifier = Modifier.clickable { onClick() },
-        headlineContent = {
-            Text(
-                text = fileName,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyLarge
-            )
-        },
-        leadingContent = {
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(url)
-                    .size(96)
-                    .crossfade(true)
-                    .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
-                    .apply {
-                        if (isVideo) {
-                            decoderFactory { result, options, _ ->
-                                VideoFrameDecoder(result.source, options)
-                            }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(url)
+                .size(96)
+                .crossfade(true)
+                .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
+                .apply {
+                    if (isVideo) {
+                        decoderFactory { result, options, _ ->
+                            VideoFrameDecoder(result.source, options)
                         }
                     }
-                    .build(),
-                contentDescription = "File thumbnail",
-                placeholder = rememberVectorPainter(placeholderIcon),
-                error = rememberVectorPainter(placeholderIcon),
-                modifier = Modifier.size(36.dp)
-            )
-        },
-        trailingContent = {
-            IconButton(onClick = { /* TODO: Context menu */ }) {
-                Icon(Icons.Default.MoreVert, contentDescription = "Options")
-            }
+                }
+                .build(),
+            contentDescription = "File thumbnail",
+            placeholder = rememberVectorPainter(placeholderIcon),
+            error = rememberVectorPainter(placeholderIcon),
+            modifier = Modifier.size(28.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = fileName,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f)
+        )
+        IconButton(
+            onClick = { /* TODO: Context menu */ },
+            modifier = Modifier.size(32.dp)
+        ) {
+            Icon(Icons.Default.MoreVert, contentDescription = "Options", modifier = Modifier.size(20.dp))
         }
-    )
-    HorizontalDivider(modifier = Modifier.padding(start = 60.dp))
+    }
 }
 
 @Composable
