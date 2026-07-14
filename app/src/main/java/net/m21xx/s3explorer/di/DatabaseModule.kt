@@ -19,12 +19,18 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
+        val migration5To6 = object : androidx.room.migration.Migration(5, 6) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE s3_objects ADD COLUMN extension TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         return Room.databaseBuilder(
             context,
             AppDatabase::class.java,
             "s3explorer_database"
         )
-        .fallbackToDestructiveMigration()
+        .addMigrations(migration5To6)
         .build()
     }
 
