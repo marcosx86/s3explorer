@@ -66,6 +66,10 @@ The app is built using **Clean Architecture** principles and the **MVVM (Model-V
 * **Premium UI Palette:** Custom Material 3 color schemes derived from the official branding (Ocean Blue, Sky Blue, Warm Wood).
 * **Native Splash Screen:** Seamless launch experience utilizing Android 12's `core-splashscreen` library.
 * **Empty State Watermarks:** Desaturated, grayscale, non-intrusive watermark background in empty folders to reinforce branding.
+### 8. Connections Import, Export, & Management
+* **JSON/Base64 Portability:** Export your configured connections as a JSON array, encoded in Base64 for basic obfuscation. Saved under the `.dat` extension.
+* **System File Picker Integration:** Utilizes Android's Storage Access Framework (SAF) to let users import/export connection profiles directly to/from any system-recognized storage provider.
+* **Safe Profile Purge:** Includes a bulk-delete "Clear List" option with a confirmation dialog, safeguarding credentials from accidental erasure.
 
 ---
 
@@ -75,6 +79,7 @@ The app is built using **Clean Architecture** principles and the **MVVM (Model-V
 net.m21xx.s3explorer/
 ├── data/
 │   ├── local/              # Room DB, DAOs, Entities, Preferences DataStore
+│   ├── model/              # Domain-specific DTO models (e.g. ConnectionExportItem)
 │   ├── remote/             # AWS SDK networking wrappers
 │   └── repository/         # Data Repositories orchestrating caching & syncing
 ├── domain/                 # Use Cases (Sync, Presigning, Config Exporter, Profile Save)
@@ -109,3 +114,10 @@ net.m21xx.s3explorer/
 * Video Player in Media Viewer
 * Splash Screen & Premium Theming
 * Explorer File Sorting & Hidden File Filtering
+* Connections Import/Export & Bulk Management
+
+---
+
+## License
+
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**. See the [LICENSE.md](file:///c:/git/s3explorer/LICENSE.md) file for more details.

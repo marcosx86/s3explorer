@@ -14,6 +14,13 @@ import net.m21xx.s3explorer.data.local.entity.ConnectionProfileEntity
 import net.m21xx.s3explorer.domain.DeleteProfileUseCase
 import net.m21xx.s3explorer.domain.GenerateRcloneConfigUseCase
 import net.m21xx.s3explorer.domain.SetCustomNameUseCase
+import net.m21xx.s3explorer.data.repository.ConnectionRepository
+import net.m21xx.s3explorer.data.model.ConnectionExportItem
+import android.net.Uri
+import android.content.Context
+import android.util.Base64
+import org.json.JSONArray
+import org.json.JSONObject
 import javax.inject.Inject
 
 data class ConnectionsListState(
@@ -28,7 +35,8 @@ class ConnectionsListViewModel @Inject constructor(
     private val connectionProfileDao: ConnectionProfileDao,
     private val deleteProfileUseCase: DeleteProfileUseCase,
     private val setCustomNameUseCase: SetCustomNameUseCase,
-    private val generateRcloneConfigUseCase: GenerateRcloneConfigUseCase
+    private val generateRcloneConfigUseCase: GenerateRcloneConfigUseCase,
+    private val connectionRepository: ConnectionRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ConnectionsListState())
@@ -86,6 +94,80 @@ class ConnectionsListViewModel @Inject constructor(
             val profile = connectionProfileDao.getProfileById(profileId) ?: return@launch
             val updated = profile.copy(lastUsedAt = System.currentTimeMillis())
             connectionProfileDao.insertProfile(updated)
+        }
+    }
+
+    fun clearAllProfiles() {
+        viewModelScope.launch {
+            try {
+                uiState.value.profiles.forEach { profile ->
+                    deleteProfileUseCase.execute(profile.profileId)
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to clear profiles: ${e.message}") }
+            }
+        }
+    }
+
+    fun exportConnections(uri: Uri, context: Context) {
+        viewModelScope.launch {
+            try {
+                val jsonArray = JSONArray()
+                uiState.value.profiles.forEach { profile ->
+                    val secretKey = connectionRepository.getProfileSecretKey(profile.profileId) ?: ""
+                    val jsonObject = JSONObject().apply {
+                        put("profileId", profile.profileId)
+                        put("alias", profile.alias)
+                        put("endpointUrl", profile.endpointUrl)
+                        put("accessKey", profile.accessKey)
+                        put("defaultBucket", profile.defaultBucket)
+                        put("region", profile.region)
+                        put("secretKey", secretKey)
+                    }
+                    jsonArray.put(jsonObject)
+                }
+                
+                val jsonString = jsonArray.toString()
+                val base64String = Base64.encodeToString(jsonString.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+                
+                context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.write(base64String.toByteArray(Charsets.UTF_8))
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to export: ${e.message}") }
+            }
+        }
+    }
+
+    fun importConnections(uri: Uri, context: Context) {
+        viewModelScope.launch {
+            try {
+                var base64String = ""
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    base64String = inputStream.bufferedReader().readText()
+                }
+                if (base64String.isNotEmpty()) {
+                    val jsonString = String(Base64.decode(base64String, Base64.DEFAULT), Charsets.UTF_8)
+                    val jsonArray = JSONArray(jsonString)
+                    
+                    for (i in 0 until jsonArray.length()) {
+                        val jsonObject = jsonArray.getJSONObject(i)
+                        val entity = ConnectionProfileEntity(
+                            profileId = jsonObject.getString("profileId"),
+                            alias = jsonObject.getString("alias"),
+                            endpointUrl = jsonObject.getString("endpointUrl"),
+                            accessKey = jsonObject.getString("accessKey"),
+                            defaultBucket = jsonObject.getString("defaultBucket"),
+                            region = jsonObject.getString("region"),
+                            lastUsedAt = System.currentTimeMillis()
+                        )
+                        val secretKey = jsonObject.getString("secretKey")
+                        connectionRepository.saveProfile(entity, secretKey)
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Failed to import: ${e.message}") }
+            }
         }
     }
 }

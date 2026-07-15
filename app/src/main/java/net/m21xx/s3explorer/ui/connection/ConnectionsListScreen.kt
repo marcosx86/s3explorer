@@ -10,6 +10,9 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -31,6 +34,19 @@ fun ConnectionsListScreen(
     var renameProfileId by remember { mutableStateOf<String?>(null) }
     var newAliasName by remember { mutableStateOf("") }
     
+    var globalMenuExpanded by remember { mutableStateOf(false) }
+    var showClearListDialog by remember { mutableStateOf(false) }
+    
+    val context = LocalContext.current
+    
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { viewModel.importConnections(it, context) }
+    }
+    
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+        uri?.let { viewModel.exportConnections(it, context) }
+    }
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -39,8 +55,37 @@ fun ConnectionsListScreen(
                     IconButton(onClick = { onNavigateToNewConnection(null) }) {
                         Icon(Icons.Default.Add, contentDescription = "New Connection")
                     }
-                    IconButton(onClick = { /* Global Actions */ }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More")
+                    Box {
+                        IconButton(onClick = { globalMenuExpanded = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "More")
+                        }
+                        DropdownMenu(
+                            expanded = globalMenuExpanded,
+                            onDismissRequest = { globalMenuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Import Connections") },
+                                onClick = {
+                                    globalMenuExpanded = false
+                                    importLauncher.launch("*/*")
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Export Connections") },
+                                onClick = {
+                                    globalMenuExpanded = false
+                                    exportLauncher.launch("s3explorer_connections.dat")
+                                }
+                            )
+                            Divider()
+                            DropdownMenuItem(
+                                text = { Text("Clear List", color = MaterialTheme.colorScheme.error) },
+                                onClick = {
+                                    globalMenuExpanded = false
+                                    showClearListDialog = true
+                                }
+                            )
+                        }
                     }
                 }
             )
@@ -100,6 +145,24 @@ fun ConnectionsListScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { renameProfileId = null }) { Text("Cancel") }
+                }
+            )
+        }
+        
+        // Clear List Dialog
+        if (showClearListDialog) {
+            AlertDialog(
+                onDismissRequest = { showClearListDialog = false },
+                title = { Text("Clear Connections") },
+                text = { Text("Are you sure you want to delete all your connection profiles? This action cannot be undone.") },
+                confirmButton = {
+                    TextButton(onClick = { 
+                        viewModel.clearAllProfiles()
+                        showClearListDialog = false
+                    }) { Text("Clear", color = MaterialTheme.colorScheme.error) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showClearListDialog = false }) { Text("Cancel") }
                 }
             )
         }
