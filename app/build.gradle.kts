@@ -114,3 +114,12 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
+
+configurations.configureEach {
+    if (name.contains("release", ignoreCase = true)) {
+        exclude(group = "io.opencensus", module = "opencensus-api")
+        exclude(group = "io.opencensus", module = "opencensus-proto")
+    }
+}
+
+
