@@ -38,10 +38,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import coil.decode.VideoFrameDecoder
 import coil.request.ImageRequest
 import android.webkit.MimeTypeMap
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import net.m21xx.s3explorer.data.local.entity.S3ObjectEntity
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -85,6 +87,12 @@ private fun getPlaceholderIcon(extension: String, mimeType: String?): androidx.c
         "ttf", "otf", "woff", "woff2", "eot" -> Icons.Default.FontDownload
         else -> Icons.AutoMirrored.Filled.InsertDriveFile
     }
+}
+
+@Composable
+private fun getPlaceholderTint(): Color {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    return if (isDark) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
 }
 
 @Composable
@@ -204,6 +212,8 @@ fun GalleryFolderCardItem(
 @Composable
 fun DetailedListItem(
     item: S3ObjectEntity,
+    showImageThumbnails: Boolean,
+    showVideoThumbnails: Boolean,
     getThumbnailUrl: suspend (S3ObjectEntity) -> String?,
     getThumbnailUrlSync: (S3ObjectEntity) -> String?,
     onClick: () -> Unit
@@ -213,19 +223,22 @@ fun DetailedListItem(
     val formattedSize = Formatter.formatShortFileSize(context, item.size)
     val formattedDate = SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", Locale.getDefault()).format(Date(item.lastModified))
     
-    var url by remember(item.objectKey) { mutableStateOf(getThumbnailUrlSync(item)) }
-    
-    LaunchedEffect(item.objectKey) {
-        if (url == null) {
-            url = getThumbnailUrl(item)
-        }
-    }
-    
     val filename = item.objectKey.substringAfterLast('/')
     val extension = if (filename.contains('.')) filename.substringAfterLast('.').lowercase() else ""
     val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+    val isImage = mimeType?.startsWith("image/") == true
     val isVideo = mimeType?.startsWith("video/") == true
     val placeholderIcon = getPlaceholderIcon(extension, mimeType)
+    
+    val shouldShowThumbnail = (isImage && showImageThumbnails) || (isVideo && showVideoThumbnails)
+
+    var url by remember(item.objectKey) { mutableStateOf(if (shouldShowThumbnail) getThumbnailUrlSync(item) else null) }
+    
+    LaunchedEffect(item.objectKey) {
+        if (url == null && shouldShowThumbnail) {
+            url = getThumbnailUrl(item)
+        }
+    }
 
     ListItem(
         modifier = Modifier.clickable { onClick() },
@@ -240,25 +253,39 @@ fun DetailedListItem(
             Text(text = "$formattedDate • $formattedSize")
         },
         leadingContent = {
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(url)
-                    .size(128)
-                    .crossfade(true)
-                    .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
-                    .apply {
-                        if (isVideo) {
-                            decoderFactory { result, options, _ ->
-                                VideoFrameDecoder(result.source, options)
+            if (shouldShowThumbnail) {
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(url)
+                        .size(128)
+                        .crossfade(true)
+                        .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
+                        .apply {
+                            if (isVideo) {
+                                decoderFactory { result, options, _ ->
+                                    VideoFrameDecoder(result.source, options)
+                                }
                             }
                         }
-                    }
-                    .build(),
-                contentDescription = "File thumbnail",
-                placeholder = rememberVectorPainter(placeholderIcon),
-                error = rememberVectorPainter(placeholderIcon),
-                modifier = Modifier.size(48.dp)
-            )
+                        .build(),
+                    contentDescription = "File thumbnail",
+                    loading = {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Icon(placeholderIcon, contentDescription = null, tint = getPlaceholderTint(), modifier = Modifier.size(24.dp))
+                        }
+                    },
+                    error = {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Icon(placeholderIcon, contentDescription = null, tint = getPlaceholderTint(), modifier = Modifier.size(24.dp))
+                        }
+                    },
+                    modifier = Modifier.size(48.dp)
+                )
+            } else {
+                Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                    Icon(placeholderIcon, contentDescription = null, tint = getPlaceholderTint(), modifier = Modifier.size(32.dp))
+                }
+            }
         },
         trailingContent = {
             IconButton(onClick = { /* TODO: Context menu */ }) {
@@ -272,6 +299,8 @@ fun DetailedListItem(
 @Composable
 fun CompactListItem(
     item: S3ObjectEntity,
+    showImageThumbnails: Boolean,
+    showVideoThumbnails: Boolean,
     getThumbnailUrl: suspend (S3ObjectEntity) -> String?,
     getThumbnailUrlSync: (S3ObjectEntity) -> String?,
     onClick: () -> Unit
@@ -279,19 +308,22 @@ fun CompactListItem(
     val fileName = item.objectKey.removePrefix(item.parentPrefix)
     val context = LocalContext.current
     
-    var url by remember(item.objectKey) { mutableStateOf(getThumbnailUrlSync(item)) }
-    
-    LaunchedEffect(item.objectKey) {
-        if (url == null) {
-            url = getThumbnailUrl(item)
-        }
-    }
-    
     val filename = item.objectKey.substringAfterLast('/')
     val extension = if (filename.contains('.')) filename.substringAfterLast('.').lowercase() else ""
     val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+    val isImage = mimeType?.startsWith("image/") == true
     val isVideo = mimeType?.startsWith("video/") == true
     val placeholderIcon = getPlaceholderIcon(extension, mimeType)
+    
+    val shouldShowThumbnail = (isImage && showImageThumbnails) || (isVideo && showVideoThumbnails)
+
+    var url by remember(item.objectKey) { mutableStateOf(if (shouldShowThumbnail) getThumbnailUrlSync(item) else null) }
+    
+    LaunchedEffect(item.objectKey) {
+        if (url == null && shouldShowThumbnail) {
+            url = getThumbnailUrl(item)
+        }
+    }
 
     Row(
         modifier = Modifier
@@ -300,25 +332,39 @@ fun CompactListItem(
             .padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(url)
-                .size(96)
-                .crossfade(true)
-                .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
-                .apply {
-                    if (isVideo) {
-                        decoderFactory { result, options, _ ->
-                            VideoFrameDecoder(result.source, options)
+        if (shouldShowThumbnail) {
+            SubcomposeAsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(url)
+                    .size(96)
+                    .crossfade(true)
+                    .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
+                    .apply {
+                        if (isVideo) {
+                            decoderFactory { result, options, _ ->
+                                VideoFrameDecoder(result.source, options)
+                            }
                         }
                     }
-                }
-                .build(),
-            contentDescription = "File thumbnail",
-            placeholder = rememberVectorPainter(placeholderIcon),
-            error = rememberVectorPainter(placeholderIcon),
-            modifier = Modifier.size(28.dp)
-        )
+                    .build(),
+                contentDescription = "File thumbnail",
+                loading = {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(placeholderIcon, contentDescription = null, tint = getPlaceholderTint(), modifier = Modifier.size(20.dp))
+                    }
+                },
+                error = {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Icon(placeholderIcon, contentDescription = null, tint = getPlaceholderTint(), modifier = Modifier.size(20.dp))
+                    }
+                },
+                modifier = Modifier.size(28.dp)
+            )
+        } else {
+            Box(modifier = Modifier.size(28.dp), contentAlignment = Alignment.Center) {
+                Icon(placeholderIcon, contentDescription = null, tint = getPlaceholderTint(), modifier = Modifier.size(20.dp))
+            }
+        }
         Spacer(modifier = Modifier.width(16.dp))
         Text(
             text = fileName,
@@ -339,6 +385,8 @@ fun CompactListItem(
 @Composable
 fun GalleryCardItem(
     item: S3ObjectEntity,
+    showImageThumbnails: Boolean,
+    showVideoThumbnails: Boolean,
     getThumbnailUrl: suspend (S3ObjectEntity) -> String?,
     getThumbnailUrlSync: (S3ObjectEntity) -> String?,
     onClick: () -> Unit
@@ -346,19 +394,22 @@ fun GalleryCardItem(
     val fileName = item.objectKey.removePrefix(item.parentPrefix)
     val context = LocalContext.current
     
-    var url by remember(item.objectKey) { mutableStateOf(getThumbnailUrlSync(item)) }
-    
-    LaunchedEffect(item.objectKey) {
-        if (url == null) {
-            url = getThumbnailUrl(item)
-        }
-    }
-
     val filename = item.objectKey.substringAfterLast('/')
     val extension = if (filename.contains('.')) filename.substringAfterLast('.').lowercase() else ""
     val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+    val isImage = mimeType?.startsWith("image/") == true
     val isVideo = mimeType?.startsWith("video/") == true
     val placeholderIcon = getPlaceholderIcon(extension, mimeType)
+    
+    val shouldShowThumbnail = (isImage && showImageThumbnails) || (isVideo && showVideoThumbnails)
+
+    var url by remember(item.objectKey) { mutableStateOf(if (shouldShowThumbnail) getThumbnailUrlSync(item) else null) }
+    
+    LaunchedEffect(item.objectKey) {
+        if (url == null && shouldShowThumbnail) {
+            url = getThumbnailUrl(item)
+        }
+    }
 
     ElevatedCard(
         modifier = Modifier
@@ -367,28 +418,40 @@ fun GalleryCardItem(
             .clickable { onClick() }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            AsyncImage(
-                model = ImageRequest.Builder(context)
-                    .data(url)
-                    //.size(1080)
-                    .size(720)
-                    //.size(if (isVideo) 640 else 720)
-                    .crossfade(true)
-                    .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
-                    .apply {
-                        if (isVideo) {
-                            decoderFactory { result, options, _ ->
-                                VideoFrameDecoder(result.source, options)
+            if (shouldShowThumbnail) {
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(url)
+                        .size(720)
+                        .crossfade(true)
+                        .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
+                        .apply {
+                            if (isVideo) {
+                                decoderFactory { result, options, _ ->
+                                    VideoFrameDecoder(result.source, options)
+                                }
                             }
                         }
-                    }
-                    .build(),
-                contentDescription = "File thumbnail",
-                placeholder = rememberVectorPainter(placeholderIcon),
-                error = rememberVectorPainter(placeholderIcon),
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
+                        .build(),
+                    contentDescription = "File thumbnail",
+                    loading = {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Icon(placeholderIcon, contentDescription = null, tint = getPlaceholderTint(), modifier = Modifier.size(48.dp))
+                        }
+                    },
+                    error = {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Icon(placeholderIcon, contentDescription = null, tint = getPlaceholderTint(), modifier = Modifier.size(48.dp))
+                        }
+                    },
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Icon(placeholderIcon, contentDescription = null, tint = getPlaceholderTint(), modifier = Modifier.size(64.dp))
+                }
+            }
             
             // Filename overlay
             Surface(

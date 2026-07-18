@@ -74,7 +74,9 @@ class FileExplorerViewModel @Inject constructor(
                     it.copy(
                         sortBy = prefs.sortBy,
                         sortDirection = prefs.sortDirection,
-                        showHidden = !prefs.hideDotfiles
+                        showHidden = !prefs.hideDotfiles,
+                        showImageThumbnails = prefs.showImageThumbnails,
+                        showVideoThumbnails = prefs.showVideoThumbnails
                     )
                 }
             }

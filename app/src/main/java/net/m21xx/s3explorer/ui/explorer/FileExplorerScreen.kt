@@ -52,7 +52,8 @@ fun FileExplorerScreen(
     onNavigateToTransfers: (profileId: String) -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToMediaBackup: () -> Unit,
-    onNavigateToTrash: (profileId: String) -> Unit
+    onNavigateToTrash: (profileId: String) -> Unit,
+    onNavigateToAbout: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val pagingItems = viewModel.pagedObjects.collectAsLazyPagingItems()
@@ -111,7 +112,10 @@ fun FileExplorerScreen(
                     coroutineScope.launch { drawerState.close() }
                     onNavigateToTrash(uiState.profileId) 
                 },
-                onAboutClick = { viewModel.toggleAboutDialog(true) },
+                onAboutClick = { 
+                    coroutineScope.launch { drawerState.close() }
+                    onNavigateToAbout()
+                },
                 onRemoveCredentialsClick = { viewModel.toggleRemoveCredentialsDialog(true) },
                 onRefreshStorageClick = { viewModel.refreshStorageStats() }
             )
@@ -303,20 +307,26 @@ fun FileExplorerScreen(
                             } else {
                                 when (uiState.viewMode) {
                                     ExplorerViewMode.DETAILED_LIST -> DetailedListItem(
-                                        item = item, 
+                                        item = item,
+                                        showImageThumbnails = uiState.showImageThumbnails,
+                                        showVideoThumbnails = uiState.showVideoThumbnails,
                                         getThumbnailUrl = { viewModel.getThumbnailUrl(it) },
                                         getThumbnailUrlSync = { viewModel.getThumbnailUrlSync(it) },
                                         onClick = { onNavigateToMediaViewer(uiState.profileId, uiState.bucketName, uiState.currentPrefix, item.objectKey) }
                                     )
                                     ExplorerViewMode.COMPACT_LIST -> CompactListItem(
-                                        item = item, 
+                                        item = item,
+                                        showImageThumbnails = uiState.showImageThumbnails,
+                                        showVideoThumbnails = uiState.showVideoThumbnails,
                                         getThumbnailUrl = { viewModel.getThumbnailUrl(it) },
                                         getThumbnailUrlSync = { viewModel.getThumbnailUrlSync(it) },
                                         onClick = { onNavigateToMediaViewer(uiState.profileId, uiState.bucketName, uiState.currentPrefix, item.objectKey) }
                                     )
                                     ExplorerViewMode.GALLERY_SMALL,
                                     ExplorerViewMode.GALLERY_LARGE -> GalleryCardItem(
-                                        item = item, 
+                                        item = item,
+                                        showImageThumbnails = uiState.showImageThumbnails,
+                                        showVideoThumbnails = uiState.showVideoThumbnails,
                                         getThumbnailUrl = { viewModel.getThumbnailUrl(it) },
                                         getThumbnailUrlSync = { viewModel.getThumbnailUrlSync(it) },
                                         onClick = { onNavigateToMediaViewer(uiState.profileId, uiState.bucketName, uiState.currentPrefix, item.objectKey) }
@@ -329,19 +339,6 @@ fun FileExplorerScreen(
             }
         }
     }
-    }
-
-    if (uiState.drawerState.showAboutDialog) {
-        AlertDialog(
-            onDismissRequest = { viewModel.toggleAboutDialog(false) },
-            title = { Text("About") },
-            text = { Text("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.") },
-            confirmButton = {
-                TextButton(onClick = { viewModel.toggleAboutDialog(false) }) {
-                    Text("Close")
-                }
-            }
-        )
     }
 
     if (uiState.drawerState.showRemoveCredentialsDialog) {

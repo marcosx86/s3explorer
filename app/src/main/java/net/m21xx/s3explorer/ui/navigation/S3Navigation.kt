@@ -46,6 +46,7 @@ object Destinations {
 
     const val GLOBAL_SETTINGS = "global_settings"
     const val MEDIA_BACKUP = "media_backup"
+    const val ABOUT = "about"
 }
 
 @Composable
@@ -120,6 +121,9 @@ fun S3NavHost(
                 },
                 onNavigateToTrash = { profileId ->
                     navController.navigate(Destinations.trashRoute(profileId))
+                },
+                onNavigateToAbout = {
+                    navController.navigate(Destinations.ABOUT)
                 }
             )
         }
@@ -170,6 +174,12 @@ fun S3NavHost(
 
         composable(Destinations.MEDIA_BACKUP) {
             PlaceholderScreen("Media Backup", onNavigateBack = { navController.popBackStack() })
+        }
+        
+        composable(Destinations.ABOUT) {
+            net.m21xx.s3explorer.ui.settings.AboutScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
     }
 }

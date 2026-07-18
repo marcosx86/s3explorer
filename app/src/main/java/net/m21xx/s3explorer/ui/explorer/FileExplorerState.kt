@@ -21,5 +21,7 @@ data class FileExplorerState(
     val drawerState: DrawerUIState = DrawerUIState(),
     val sortBy: SortBy = SortBy.NAME,
     val sortDirection: SortDirection = SortDirection.ASCENDING,
-    val showHidden: Boolean = true
+    val showHidden: Boolean = true,
+    val showImageThumbnails: Boolean = true,
+    val showVideoThumbnails: Boolean = true
 )

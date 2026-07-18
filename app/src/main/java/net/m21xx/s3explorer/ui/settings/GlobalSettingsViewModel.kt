@@ -40,6 +40,12 @@ class GlobalSettingsViewModel @Inject constructor(
         }
     }
 
+    fun setLockGracePeriod(seconds: Int) {
+        viewModelScope.launch {
+            settingsDataStore.setLockGracePeriod(seconds)
+        }
+    }
+
     fun toggleLongDateFormat(enabled: Boolean) {
         viewModelScope.launch {
             settingsDataStore.setLongDateFormat(enabled)
@@ -55,6 +61,24 @@ class GlobalSettingsViewModel @Inject constructor(
     fun toggleShowThumbnails(enabled: Boolean) {
         viewModelScope.launch {
             settingsDataStore.setShowThumbnails(enabled)
+        }
+    }
+
+    fun toggleShowVideoThumbnails(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsDataStore.setShowVideoThumbnails(enabled)
+        }
+    }
+
+    fun setThemeMode(mode: String) {
+        viewModelScope.launch {
+            settingsDataStore.setThemeMode(mode)
+        }
+    }
+
+    fun setCustomUserAgent(userAgent: String) {
+        viewModelScope.launch {
+            settingsDataStore.setCustomUserAgent(userAgent)
         }
     }
 }

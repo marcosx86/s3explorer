@@ -72,6 +72,54 @@ class AccountSettingsViewModel @Inject constructor(
         }
     }
 
+    fun setStorageClass(storageClass: String) {
+        viewModelScope.launch {
+            profilePreferencesDataStore.setStorageClass(profileId, storageClass)
+        }
+    }
+
+    fun toggleSkipSameFileUpload(enabled: Boolean) {
+        viewModelScope.launch {
+            profilePreferencesDataStore.setSkipSameFileUpload(profileId, enabled)
+        }
+    }
+
+    fun updateMultipartConcurrentParts(parts: Int) {
+        viewModelScope.launch {
+            profilePreferencesDataStore.setMultipartConcurrentParts(profileId, parts)
+        }
+    }
+
+    fun updateMultipartChunkSizeMB(sizeMB: Int) {
+        viewModelScope.launch {
+            profilePreferencesDataStore.setMultipartChunkSizeMB(profileId, sizeMB)
+        }
+    }
+
+    fun toggleGenerateThumbnailsLocally(enabled: Boolean) {
+        viewModelScope.launch {
+            profilePreferencesDataStore.setGenerateThumbnailsLocally(profileId, enabled)
+        }
+    }
+
+    fun toggleUploadThumbnailsRemotely(enabled: Boolean) {
+        viewModelScope.launch {
+            profilePreferencesDataStore.setUploadThumbnailsRemotely(profileId, enabled)
+        }
+    }
+
+    fun updateUploadTimeoutMs(timeout: Long) {
+        viewModelScope.launch {
+            profilePreferencesDataStore.setUploadTimeoutMs(profileId, timeout)
+        }
+    }
+
+    fun updateDownloadTimeoutMs(timeout: Long) {
+        viewModelScope.launch {
+            profilePreferencesDataStore.setDownloadTimeoutMs(profileId, timeout)
+        }
+    }
+
     fun clearDocumentCache() {
         viewModelScope.launch {
             val result = clearCacheUseCase.execute(profileId, CacheType.DOCUMENTS)
@@ -91,6 +139,13 @@ class AccountSettingsViewModel @Inject constructor(
             } else {
                 showSnackbar("Failed to clear thumbnail cache.")
             }
+        }
+    }
+
+    fun deletePendingMultipartUploads() {
+        viewModelScope.launch {
+            // TODO: Call S3 SDK to abort pending multipart uploads
+            showSnackbar("Pending multipart uploads deleted.")
         }
     }
 

@@ -4,8 +4,10 @@ This specification outlines the refinements for the general UI and the expansion
 
 ## 1. General UI Refinements
 - **Dark Mode**: Implement a three-way combo for the theme: Light, Dark, and System Default.
-- **Secure Application**: Enforce an app lock on application launch or reactivation if enabled by the user in settings.
-- **Splashscreen**: Introduce an artificial delay of 1500ms to the splashscreen to ensure smooth transition and branding visibility.
+- **Secure Application**: Enforce an app lock on application launch (after splashscreen) or reactivation from the Android switcher if enabled by the user in settings. 
+  - Splashscreen should ALWAYS trigger AppLock at the end of the splash timeout.
+  - A grace period (in seconds) defines how long the app can be backgrounded before requiring the lock again. A value of 0 omits AppLock from being asked again in the present app session.
+- **Splashscreen**: Introduce an artificial delay of 2000ms to the splashscreen to ensure smooth transition and branding visibility.
 - **About Screen**: Create a dedicated "About" screen (replacing any modal) featuring:
   - App logo at the top with "Lorem ipsum" description.
   - Donation section featuring a clickable PIX QR code (tapping copies the PIX key to the clipboard).
@@ -15,7 +17,9 @@ This specification outlines the refinements for the general UI and the expansion
 ## 2. Global Settings Expansion
 Available from the connection drawer, named "Global settings" to avoid confusion with isolated account settings.
 - **System**: Add "Trust insecure certificates" toggle to skip SSL verification (default: false).
-- **Lock**: Add "Enable native lock screen" to secure the app using device methods (Biometrics/PIN/Pattern).
+- **Lock**: 
+  - Add "Enable native lock screen" to secure the app using device methods (Biometrics/PIN/Pattern). Turning this on or off must be confirmed by the system lock method.
+  - Add "AppLock grace period" (seconds) below it to define the time window for reactivation without lock. 0 means it's only asked on cold start.
 - **View**: 
   - Add "Choose theme" (Light, Dark, System).
   - Add explicit toggles for "Show image thumbnails" and "Show video thumbnails".

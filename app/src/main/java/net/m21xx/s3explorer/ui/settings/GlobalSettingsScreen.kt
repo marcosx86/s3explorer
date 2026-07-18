@@ -21,6 +21,40 @@ fun GlobalSettingsScreen(
 ) {
     val prefs by viewModel.uiState.collectAsState()
 
+    var showThemeDialog by remember { mutableStateOf(false) }
+    var showUADialog by remember { mutableStateOf(false) }
+    var tempUserAgent by remember { mutableStateOf("") }
+    
+    var showGracePeriodDialog by remember { mutableStateOf(false) }
+    var tempGracePeriod by remember { mutableStateOf("") }
+    
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    fun confirmAppLockToggle(currentChecked: Boolean) {
+        val fragmentActivity = context as? androidx.fragment.app.FragmentActivity
+        if (fragmentActivity == null) {
+            viewModel.toggleLockScreen(!currentChecked)
+            return
+        }
+
+        val executor = androidx.core.content.ContextCompat.getMainExecutor(context)
+        val biometricPrompt = androidx.biometric.BiometricPrompt(fragmentActivity, executor,
+            object : androidx.biometric.BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: androidx.biometric.BiometricPrompt.AuthenticationResult) {
+                    super.onAuthenticationSucceeded(result)
+                    viewModel.toggleLockScreen(!currentChecked)
+                }
+            })
+
+        val promptInfo = androidx.biometric.BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Confirm Action")
+            .setSubtitle(if (currentChecked) "Authenticate to disable app lock" else "Authenticate to enable app lock")
+            .setAllowedAuthenticators(androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG or androidx.biometric.BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+            .build()
+
+        biometricPrompt.authenticate(promptInfo)
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -81,13 +115,30 @@ fun GlobalSettingsScreen(
                 trailingContent = {
                     Switch(
                         checked = prefs.enableLockScreen,
-                        onCheckedChange = { viewModel.toggleLockScreen(it) }
+                        onCheckedChange = { confirmAppLockToggle(prefs.enableLockScreen) }
                     )
                 },
                 modifier = Modifier.clickable { 
-                    viewModel.toggleLockScreen(!prefs.enableLockScreen) 
+                    confirmAppLockToggle(prefs.enableLockScreen)
                 }
             )
+
+            if (prefs.enableLockScreen) {
+                ListItem(
+                    headlineContent = { Text("AppLock grace period") },
+                    supportingContent = { 
+                        if (prefs.lockGracePeriodSeconds == 0) {
+                            Text("Always ask on foreground")
+                        } else {
+                            Text("${prefs.lockGracePeriodSeconds} seconds") 
+                        }
+                    },
+                    modifier = Modifier.clickable { 
+                        tempGracePeriod = prefs.lockGracePeriodSeconds.toString()
+                        showGracePeriodDialog = true 
+                    }
+                )
+            }
 
             HorizontalDivider()
 
@@ -121,6 +172,14 @@ fun GlobalSettingsScreen(
             )
 
             ListItem(
+                headlineContent = { Text("Choose theme") },
+                supportingContent = { Text(prefs.themeMode) },
+                modifier = Modifier.clickable { 
+                    showThemeDialog = true 
+                }
+            )
+
+            ListItem(
                 headlineContent = { Text("Show image thumbnails") },
                 trailingContent = {
                     Switch(
@@ -132,7 +191,122 @@ fun GlobalSettingsScreen(
                     viewModel.toggleShowThumbnails(!prefs.showImageThumbnails) 
                 }
             )
+            
+            ListItem(
+                headlineContent = { Text("Show video thumbnails") },
+                trailingContent = {
+                    Switch(
+                        checked = prefs.showVideoThumbnails,
+                        onCheckedChange = { viewModel.toggleShowVideoThumbnails(it) }
+                    )
+                },
+                modifier = Modifier.clickable { 
+                    viewModel.toggleShowVideoThumbnails(!prefs.showVideoThumbnails) 
+                }
+            )
+
+            HorizontalDivider()
+
+            // Section: Miscellaneous
+            SectionHeader("Miscellaneous")
+
+            ListItem(
+                headlineContent = { Text("Custom user agent") },
+                supportingContent = { Text(prefs.customUserAgent) },
+                modifier = Modifier.clickable {
+                    tempUserAgent = prefs.customUserAgent
+                    showUADialog = true 
+                }
+            )
         }
+    }
+
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = { Text("Choose Theme") },
+            text = {
+                Column {
+                    val themes = listOf("Light", "Dark", "System")
+                    themes.forEach { theme ->
+                        Row(
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setThemeMode(theme)
+                                    showThemeDialog = false
+                                }
+                                .padding(vertical = 12.dp)
+                        ) {
+                            RadioButton(
+                                selected = prefs.themeMode == theme,
+                                onClick = {
+                                    viewModel.setThemeMode(theme)
+                                    showThemeDialog = false
+                                }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(theme)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showThemeDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showUADialog) {
+        AlertDialog(
+            onDismissRequest = { showUADialog = false },
+            title = { Text("Custom User Agent") },
+            text = {
+                OutlinedTextField(
+                    value = tempUserAgent,
+                    onValueChange = { tempUserAgent = it },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.setCustomUserAgent(tempUserAgent)
+                    showUADialog = false
+                }) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showUADialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showGracePeriodDialog) {
+        AlertDialog(
+            onDismissRequest = { showGracePeriodDialog = false },
+            title = { Text("Grace Period (seconds)") },
+            text = {
+                OutlinedTextField(
+                    value = tempGracePeriod,
+                    onValueChange = { tempGracePeriod = it.filter { char -> char.isDigit() } },
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("0") }
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    val seconds = tempGracePeriod.toIntOrNull() ?: 0
+                    viewModel.setLockGracePeriod(seconds)
+                    showGracePeriodDialog = false
+                }) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showGracePeriodDialog = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 
