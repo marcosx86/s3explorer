@@ -51,15 +51,15 @@ class NewConnectionViewModel @Inject constructor(
     }
 
     fun updateAccessKey(key: String) {
-        _uiState.update { it.copy(accessKey = key) }
+        _uiState.update { it.copy(accessKey = key, isConnectionValidated = false, validationError = null) }
     }
 
     fun updateSecretKey(key: String) {
-        _uiState.update { it.copy(secretKey = key) }
+        _uiState.update { it.copy(secretKey = key, isConnectionValidated = false, validationError = null) }
     }
 
     fun updateEndpointUrl(url: String) {
-        _uiState.update { it.copy(endpointUrl = url) }
+        _uiState.update { it.copy(endpointUrl = url, isConnectionValidated = false, validationError = null) }
     }
 
     fun updateBucketName(name: String) {
@@ -67,7 +67,7 @@ class NewConnectionViewModel @Inject constructor(
     }
 
     fun updateRegion(region: String) {
-        _uiState.update { it.copy(region = region) }
+        _uiState.update { it.copy(region = region, isConnectionValidated = false, validationError = null) }
     }
 
     fun toggleTermsAccepted(accepted: Boolean) {
@@ -114,13 +114,16 @@ class NewConnectionViewModel @Inject constructor(
         }
     }
 
-    fun testConnection() {
-        if (!_uiState.value.isConnectEnabled) return
+    fun validateConnection() {
+        val state = _uiState.value
+        if (state.endpointUrl.isBlank() || state.accessKey.isBlank() || state.secretKey.isBlank()) {
+            _uiState.update { it.copy(validationError = "Endpoint and credentials are required.") }
+            return
+        }
 
-        _uiState.update { it.copy(isTestingConnection = true, connectionResult = null) }
+        _uiState.update { it.copy(isValidatingConnection = true, validationError = null, isConnectionValidated = false) }
 
         viewModelScope.launch {
-            val state = _uiState.value
             val result = fetchAvailableBucketsUseCase.execute(
                 endpointUrl = state.endpointUrl,
                 accessKey = state.accessKey,
@@ -129,34 +132,52 @@ class NewConnectionViewModel @Inject constructor(
             )
             
             result.onSuccess {
-                try {
-                    val profileId = saveConnectionProfileUseCase.execute(
-                        alias = "",
-                        endpointUrl = state.endpointUrl,
-                        accessKey = state.accessKey,
-                        secretKey = state.secretKey,
-                        defaultBucket = state.bucketName,
-                        region = state.region
+                _uiState.update {
+                    it.copy(
+                        isValidatingConnection = false,
+                        isConnectionValidated = true,
+                        validationError = null
                     )
-                    _uiState.update {
-                        it.copy(
-                            isTestingConnection = false,
-                            connectionResult = Result.success(profileId)
-                        )
-                    }
-                } catch (e: Exception) {
-                    _uiState.update {
-                        it.copy(
-                            isTestingConnection = false,
-                            connectionResult = Result.failure(e)
-                        )
-                    }
                 }
             }.onFailure { error ->
                 _uiState.update {
                     it.copy(
+                        isValidatingConnection = false,
+                        isConnectionValidated = false,
+                        validationError = error.message ?: "Validation failed"
+                    )
+                }
+            }
+        }
+    }
+
+    fun testConnection() {
+        if (!_uiState.value.isConnectEnabled) return
+
+        _uiState.update { it.copy(isTestingConnection = true, connectionResult = null) }
+
+        viewModelScope.launch {
+            val state = _uiState.value
+            try {
+                val profileId = saveConnectionProfileUseCase.execute(
+                    alias = "",
+                    endpointUrl = state.endpointUrl,
+                    accessKey = state.accessKey,
+                    secretKey = state.secretKey,
+                    defaultBucket = state.bucketName,
+                    region = state.region
+                )
+                _uiState.update {
+                    it.copy(
                         isTestingConnection = false,
-                        connectionResult = Result.failure(error)
+                        connectionResult = Result.success(profileId)
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isTestingConnection = false,
+                        connectionResult = Result.failure(e)
                     )
                 }
             }

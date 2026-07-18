@@ -105,16 +105,11 @@ fun NewConnectionScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 trailingIcon = {
-                    Row {
-                        IconButton(onClick = { 
-                            showBucketSheet = true
-                            viewModel.fetchBuckets() 
-                        }) {
-                            Icon(imageVector = Icons.Default.List, contentDescription = "List buckets")
-                        }
-                        IconButton(onClick = { /* TODO: Create bucket */ }) {
-                            Icon(imageVector = Icons.Default.Add, contentDescription = "Create bucket")
-                        }
+                    IconButton(onClick = { 
+                        showBucketSheet = true
+                        viewModel.fetchBuckets() 
+                    }) {
+                        Icon(imageVector = Icons.Default.List, contentDescription = "List buckets")
                     }
                 }
             )
@@ -136,6 +131,21 @@ fun NewConnectionScreen(
                 )
             }
 
+            // Validation and Save Feedback
+            if (uiState.isConnectionValidated) {
+                Text(
+                    text = "Connection parameters validated successfully!",
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            uiState.validationError?.let { error ->
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
             uiState.connectionResult?.exceptionOrNull()?.let { error ->
                 Text(
                     text = error.message ?: "Connection failed",
@@ -144,19 +154,40 @@ fun NewConnectionScreen(
                 )
             }
 
-            Button(
-                onClick = { viewModel.testConnection() },
-                enabled = uiState.isConnectEnabled,
-                modifier = Modifier.fillMaxWidth()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                if (uiState.isTestingConnection) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text("Connect")
+                Button(
+                    onClick = { viewModel.validateConnection() },
+                    enabled = uiState.isValidateEnabled,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (uiState.isValidatingConnection) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Validate")
+                    }
+                }
+
+                Button(
+                    onClick = { viewModel.testConnection() },
+                    enabled = uiState.isConnectEnabled,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (uiState.isTestingConnection) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Connect")
+                    }
                 }
             }
         }

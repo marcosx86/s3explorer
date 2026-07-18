@@ -29,6 +29,8 @@ The app is built using **Clean Architecture** principles and the **MVVM (Model-V
 * **Rclone Configuration Exporter:** Decrypts connection details securely and formats them into a standard `.ini` config ready for `rclone`.
 * **Credential Reuse:** Quickly pre-fill the connection screen using credential details from an existing profile.
 * **Key Shredding on Delete:** Deleting a profile clears all Room caches related to it and shreds the keys from the Android Keystore.
+* **Connection Validation:** Validate credentials against S3 before saving the profile.
+* **Simplified Fields:** Removed extraneous buttons (like the Create Bucket plus button) to declutter the form.
 
 ### 2. Multi-Tenant Local S3 Cache
 * **Profile Isolation:** Directory caching is indexed via composite primary keys referencing the specific `profileId`. Multiple accounts accessing buckets with identical names (e.g., `test-bucket` on MinIO vs AWS S3) will never experience data crossover or cache pollution.
@@ -70,6 +72,11 @@ The app is built using **Clean Architecture** principles and the **MVVM (Model-V
 * **JSON/Base64 Portability:** Export your configured connections as a JSON array, encoded in Base64 for basic obfuscation. Saved under the `.dat` extension.
 * **System File Picker Integration:** Utilizes Android's Storage Access Framework (SAF) to let users import/export connection profiles directly to/from any system-recognized storage provider.
 * **Safe Profile Purge:** Includes a bulk-delete "Clear List" option with a confirmation dialog, safeguarding credentials from accidental erasure.
+
+### 9. AppLock & Biometric Security
+* **Process-Lifecycle Protection:** Uses `ProcessLifecycleOwner` to detect when the app returns from the background, avoiding race conditions and loops when system dialogs overlay the app.
+* **Overlay Lock Screen:** Employs an overlay lock layout that blocks user input while preserving the active navigation graph state underneath.
+* **Unlock Fallback:** Provides an explicit "Unlock" button to manually request biometric validation if it was dismissed.
 
 ---
 
@@ -115,6 +122,8 @@ net.m21xx.s3explorer/
 * Splash Screen & Premium Theming
 * Explorer File Sorting & Hidden File Filtering
 * Connections Import/Export & Bulk Management
+* AppLock & Biometric Security
+* Connection Validation & UI Refinements
 
 ---
 

@@ -12,12 +12,22 @@ data class NewConnectionState(
     val connectionResult: Result<String>? = null, // Result now holds profileId
     val availableBuckets: List<String> = emptyList(),
     val isFetchingBuckets: Boolean = false,
-    val fetchBucketsError: String? = null
+    val fetchBucketsError: String? = null,
+    val isValidatingConnection: Boolean = false,
+    val isConnectionValidated: Boolean = false,
+    val validationError: String? = null
 ) {
     val isConnectEnabled: Boolean
         get() = accessKey.isNotBlank() &&
                 secretKey.isNotBlank() &&
                 endpointUrl.isNotBlank() &&
                 termsAccepted &&
+                isConnectionValidated &&
                 !isTestingConnection
+
+    val isValidateEnabled: Boolean
+        get() = accessKey.isNotBlank() &&
+                secretKey.isNotBlank() &&
+                endpointUrl.isNotBlank() &&
+                !isValidatingConnection
 }
