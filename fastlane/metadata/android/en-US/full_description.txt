@@ -1,0 +1,33 @@
+S3 Explorer is a modern Android app for browsing and managing objects in S3-compatible storage services such as AWS S3, MinIO, and Cloudflare R2. It supports connection profiles, encrypted local credential storage, offline caching, thumbnail previews, and media playback.
+The app is built with Jetpack Compose, Room, Hilt, and the AWS Kotlin SDK. It is intended for users who want a secure, privacy-conscious way to inspect and manage cloud storage buckets from Android devices.
+
+### Key Features
+
+- **Multi-provider Support**: Seamlessly connect to AWS S3, MinIO, Cloudflare R2, and other S3-compatible providers.
+- **Connection Profiles**: Save multiple provider credentials with descriptive names for quick access.
+- **Offline First**: Access cached bucket listings and objects even when offline. The app automatically syncs when connectivity is restored.
+- **Secure Credential Storage**: Uses Android Keystore for secure, encrypted storage of API keys and access tokens.
+- **Media Playback**: Integrated viewer for high-quality video, audio, and image files.
+- **File Management**: Upload, delete, and move objects with smart folder creation.
+- **Thumbnail Previews**: Generate and cache thumbnails for images, videos, and PDFs for faster browsing.
+- **Privacy-Focused**: No analytics or tracking. All data stays on your device unless you explicitly upload it to a bucket.
+
+### Technical Architecture
+
+The app follows a clean architecture pattern with:
+- Jetpack Compose for a modern, responsive UI
+- Hilt for dependency injection
+- Room for local data persistence (caching, profiles, credentials)
+- AWS Kotlin SDK for S3 operations
+- MediaStore APIs for efficient media playback
+
+### Target Audience
+
+This app is ideal for developers, system administrators, and power users who regularly interact with S3-compatible storage and need a reliable, offline-capable mobile client.
+
+### Getting Started
+
+1. Add your provider credentials (URL, access key, secret key).
+2. Create a connection profile.
+3. Browse your buckets and objects.
+4. Use the built-in viewer for media files or download them to your device.
