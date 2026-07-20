@@ -126,4 +126,12 @@ configurations.configureEach {
     }
 }
 
-
+// F-Droid reproducible builds: when invoked with -Pfdroid=true (F-Droid's build recipe
+// passes it), disable ART profile packaging so the APK omits assets/dexopt/baseline.prof
+// and baseline.profm, keeping the build byte-reproducible. Non-F-Droid channels (Google
+// Play, direct APK) are built without the flag and keep the profile — and its startup win.
+if (project.hasProperty("fdroid")) {
+    tasks.matching { it.name.contains("ArtProfile") }.configureEach {
+        enabled = false
+    }
+}
