@@ -1,33 +1,35 @@
 S3 Explorer is a modern Android app for browsing and managing objects in S3-compatible storage services such as AWS S3, MinIO, and Cloudflare R2. It supports connection profiles, encrypted local credential storage, offline caching, thumbnail previews, and media playback.
 The app is built with Jetpack Compose, Room, Hilt, and the AWS Kotlin SDK. It is intended for users who want a secure, privacy-conscious way to inspect and manage cloud storage buckets from Android devices.
 
-### Key Features
+<b>Key Features</b>
+<ul>
+  <li><b>Multi-provider Support</b>: Seamlessly connect to AWS S3, MinIO, Cloudflare R2, and other S3-compatible providers.</li>
+  <li><b>Connection Profiles</b>: Save multiple provider credentials with descriptive names for quick access.</li>
+  <li><b>Offline First</b>: Access cached bucket listings and objects even when offline. The app automatically syncs when connectivity is restored.</li>
+  <li><b>Secure Credential Storage</b>: Uses Android Keystore for secure, encrypted storage of API keys and access tokens.</li>
+  <li><b>Media Playback</b>: Integrated viewer for high-quality video, audio, and image files.</li>
+  <li><b>File Management</b>: Upload, delete, and move objects with smart folder creation.</li>
+  <li><b>Thumbnail Previews</b>: Generate and cache thumbnails for images, videos, and PDFs for faster browsing.</li>
+  <li><b>Privacy-Focused</b>: No analytics or tracking. All data stays on your device unless you explicitly upload it to a bucket.</li>
+</ul>
 
-- **Multi-provider Support**: Seamlessly connect to AWS S3, MinIO, Cloudflare R2, and other S3-compatible providers.
-- **Connection Profiles**: Save multiple provider credentials with descriptive names for quick access.
-- **Offline First**: Access cached bucket listings and objects even when offline. The app automatically syncs when connectivity is restored.
-- **Secure Credential Storage**: Uses Android Keystore for secure, encrypted storage of API keys and access tokens.
-- **Media Playback**: Integrated viewer for high-quality video, audio, and image files.
-- **File Management**: Upload, delete, and move objects with smart folder creation.
-- **Thumbnail Previews**: Generate and cache thumbnails for images, videos, and PDFs for faster browsing.
-- **Privacy-Focused**: No analytics or tracking. All data stays on your device unless you explicitly upload it to a bucket.
+<b>Technical Architecture</b>
+<p>The app follows a clean architecture pattern with:</p>
+<ul>
+  <li>Jetpack Compose for a modern, responsive UI</li>
+  <li>Hilt for dependency injection</li>
+  <li>Room for local data persistence (caching, profiles, credentials)</li>
+  <li>AWS Kotlin SDK for S3 operations</li>
+  <li>MediaStore APIs for efficient media playback</li>
+</ul>
 
-### Technical Architecture
+<b>Target Audience</b>
+<p>This app is ideal for developers, system administrators, and power users who regularly interact with S3-compatible storage and need a reliable, offline-capable mobile client.</p>
 
-The app follows a clean architecture pattern with:
-- Jetpack Compose for a modern, responsive UI
-- Hilt for dependency injection
-- Room for local data persistence (caching, profiles, credentials)
-- AWS Kotlin SDK for S3 operations
-- MediaStore APIs for efficient media playback
-
-### Target Audience
-
-This app is ideal for developers, system administrators, and power users who regularly interact with S3-compatible storage and need a reliable, offline-capable mobile client.
-
-### Getting Started
-
-1. Add your provider credentials (URL, access key, secret key).
-2. Create a connection profile.
-3. Browse your buckets and objects.
-4. Use the built-in viewer for media files or download them to your device.
+<b>Getting Started</b>
+<ol>
+  <li>Add your provider credentials (URL, access key, secret key).</li>
+  <li>Create a connection profile.</li>
+  <li>Browse your buckets and objects.</li>
+  <li>Use the built-in viewer for media files or download them to your device.</li>
+</ol>
