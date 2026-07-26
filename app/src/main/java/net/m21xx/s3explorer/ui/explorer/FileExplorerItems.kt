@@ -99,6 +99,9 @@ private fun getPlaceholderTint(): Color {
 fun FolderItem(
     item: S3ObjectEntity,
     isCompact: Boolean = false,
+    selectionModeActive: Boolean = false,
+    isSelected: Boolean = false,
+    onSelect: () -> Unit = {},
     onClick: () -> Unit
 ) {
     val folderName = item.objectKey.removePrefix(item.parentPrefix).removeSuffix("/")
@@ -106,10 +109,14 @@ fun FolderItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onClick() }
+                .clickable { if (selectionModeActive) onSelect() else onClick() }
                 .padding(horizontal = 16.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (selectionModeActive) {
+                Checkbox(checked = isSelected, onCheckedChange = { onSelect() })
+                Spacer(modifier = Modifier.width(8.dp))
+            }
             Icon(
                 imageVector = Icons.Default.Folder,
                 contentDescription = "Folder",
@@ -133,7 +140,7 @@ fun FolderItem(
         }
     } else {
         ListItem(
-            modifier = Modifier.clickable { onClick() },
+            modifier = Modifier.clickable { if (selectionModeActive) onSelect() else onClick() },
             headlineContent = {
                 Text(
                     text = folderName,
@@ -142,12 +149,18 @@ fun FolderItem(
                 )
             },
             leadingContent = {
-                Icon(
-                    imageVector = Icons.Default.Folder,
-                    contentDescription = "Folder",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(40.dp)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (selectionModeActive) {
+                        Checkbox(checked = isSelected, onCheckedChange = { onSelect() })
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Icon(
+                        imageVector = Icons.Default.Folder,
+                        contentDescription = "Folder",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
             },
             trailingContent = {
                 IconButton(onClick = { /* TODO: Context menu */ }) {
@@ -155,13 +168,16 @@ fun FolderItem(
                 }
             }
         )
-        HorizontalDivider(modifier = Modifier.padding(start = 72.dp))
+        HorizontalDivider(modifier = Modifier.padding(start = if (selectionModeActive) 120.dp else 72.dp))
     }
 }
 
 @Composable
 fun GalleryFolderCardItem(
     item: S3ObjectEntity,
+    selectionModeActive: Boolean = false,
+    isSelected: Boolean = false,
+    onSelect: () -> Unit = {},
     onClick: () -> Unit
 ) {
     val folderName = item.objectKey.removePrefix(item.parentPrefix).removeSuffix("/")
@@ -170,7 +186,7 @@ fun GalleryFolderCardItem(
         modifier = Modifier
             .padding(8.dp)
             .aspectRatio(1f)
-            .clickable { onClick() }
+            .clickable { if (selectionModeActive) onSelect() else onClick() }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Icon(
@@ -182,6 +198,14 @@ fun GalleryFolderCardItem(
                     .size(72.dp)
             )
             
+            if (selectionModeActive) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onSelect() },
+                    modifier = Modifier.align(Alignment.TopStart).padding(4.dp)
+                )
+            }
+
             Surface(
                 color = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
@@ -216,6 +240,9 @@ fun DetailedListItem(
     showVideoThumbnails: Boolean,
     getThumbnailUrl: suspend (S3ObjectEntity) -> String?,
     getThumbnailUrlSync: (S3ObjectEntity) -> String?,
+    selectionModeActive: Boolean = false,
+    isSelected: Boolean = false,
+    onSelect: () -> Unit = {},
     onClick: () -> Unit
 ) {
     val fileName = item.objectKey.removePrefix(item.parentPrefix)
@@ -241,7 +268,7 @@ fun DetailedListItem(
     }
 
     ListItem(
-        modifier = Modifier.clickable { onClick() },
+        modifier = Modifier.clickable { if (selectionModeActive) onSelect() else onClick() },
         headlineContent = {
             Text(
                 text = fileName,
@@ -253,37 +280,43 @@ fun DetailedListItem(
             Text(text = "$formattedDate • $formattedSize")
         },
         leadingContent = {
-            if (shouldShowThumbnail) {
-                SubcomposeAsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(url)
-                        .size(128)
-                        .crossfade(true)
-                        .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
-                        .apply {
-                            if (isVideo) {
-                                decoderFactory { result, options, _ ->
-                                    VideoFrameDecoder(result.source, options)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (selectionModeActive) {
+                    Checkbox(checked = isSelected, onCheckedChange = { onSelect() })
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                if (shouldShowThumbnail) {
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(url)
+                            .size(128)
+                            .crossfade(true)
+                            .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
+                            .apply {
+                                if (isVideo) {
+                                    decoderFactory { result, options, _ ->
+                                        VideoFrameDecoder(result.source, options)
+                                    }
                                 }
                             }
-                        }
-                        .build(),
-                    contentDescription = "File thumbnail",
-                    loading = {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Icon(placeholderIcon, contentDescription = null, tint = getPlaceholderTint(), modifier = Modifier.size(24.dp))
-                        }
-                    },
-                    error = {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Icon(placeholderIcon, contentDescription = null, tint = getPlaceholderTint(), modifier = Modifier.size(24.dp))
-                        }
-                    },
-                    modifier = Modifier.size(48.dp)
-                )
-            } else {
-                Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                    Icon(placeholderIcon, contentDescription = null, tint = getPlaceholderTint(), modifier = Modifier.size(32.dp))
+                            .build(),
+                        contentDescription = "File thumbnail",
+                        loading = {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Icon(placeholderIcon, contentDescription = null, tint = getPlaceholderTint(), modifier = Modifier.size(24.dp))
+                            }
+                        },
+                        error = {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Icon(placeholderIcon, contentDescription = null, tint = getPlaceholderTint(), modifier = Modifier.size(24.dp))
+                            }
+                        },
+                        modifier = Modifier.size(48.dp)
+                    )
+                } else {
+                    Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                        Icon(placeholderIcon, contentDescription = null, tint = getPlaceholderTint(), modifier = Modifier.size(32.dp))
+                    }
                 }
             }
         },
@@ -293,7 +326,7 @@ fun DetailedListItem(
             }
         }
     )
-    HorizontalDivider(modifier = Modifier.padding(start = 72.dp))
+    HorizontalDivider(modifier = Modifier.padding(start = if (selectionModeActive) 120.dp else 72.dp))
 }
 
 @Composable
@@ -303,6 +336,9 @@ fun CompactListItem(
     showVideoThumbnails: Boolean,
     getThumbnailUrl: suspend (S3ObjectEntity) -> String?,
     getThumbnailUrlSync: (S3ObjectEntity) -> String?,
+    selectionModeActive: Boolean = false,
+    isSelected: Boolean = false,
+    onSelect: () -> Unit = {},
     onClick: () -> Unit
 ) {
     val fileName = item.objectKey.removePrefix(item.parentPrefix)
@@ -328,10 +364,14 @@ fun CompactListItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .clickable { if (selectionModeActive) onSelect() else onClick() }
             .padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (selectionModeActive) {
+            Checkbox(checked = isSelected, onCheckedChange = { onSelect() })
+            Spacer(modifier = Modifier.width(8.dp))
+        }
         if (shouldShowThumbnail) {
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(context)
@@ -389,6 +429,9 @@ fun GalleryCardItem(
     showVideoThumbnails: Boolean,
     getThumbnailUrl: suspend (S3ObjectEntity) -> String?,
     getThumbnailUrlSync: (S3ObjectEntity) -> String?,
+    selectionModeActive: Boolean = false,
+    isSelected: Boolean = false,
+    onSelect: () -> Unit = {},
     onClick: () -> Unit
 ) {
     val fileName = item.objectKey.removePrefix(item.parentPrefix)
@@ -415,7 +458,7 @@ fun GalleryCardItem(
         modifier = Modifier
             .padding(8.dp)
             .aspectRatio(1f)
-            .clickable { onClick() }
+            .clickable { if (selectionModeActive) onSelect() else onClick() }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (shouldShowThumbnail) {
@@ -451,6 +494,14 @@ fun GalleryCardItem(
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Icon(placeholderIcon, contentDescription = null, tint = getPlaceholderTint(), modifier = Modifier.size(64.dp))
                 }
+            }
+            
+            if (selectionModeActive) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onSelect() },
+                    modifier = Modifier.align(Alignment.TopStart).padding(4.dp)
+                )
             }
             
             // Filename overlay

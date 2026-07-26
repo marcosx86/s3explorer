@@ -35,8 +35,17 @@ class ConnectionRepository @Inject constructor(
         return secureStorage.getSecretKey(profileId)
     }
 
+    suspend fun saveProfilePassphrase(profileId: String, passphrase: String) {
+        secureStorage.savePassphrase(profileId, passphrase)
+    }
+
+    suspend fun getProfilePassphrase(profileId: String): String? {
+        return secureStorage.getPassphrase(profileId)
+    }
+
     suspend fun deleteProfile(profile: ConnectionProfileEntity) {
         secureStorage.deleteSecretKey(profile.profileId)
+        secureStorage.deletePassphrase(profile.profileId)
         connectionProfileDao.deleteProfile(profile)
         s3ClientManager.invalidateClient(profile.profileId)
     }

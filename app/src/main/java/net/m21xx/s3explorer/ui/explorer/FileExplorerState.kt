@@ -23,5 +23,11 @@ data class FileExplorerState(
     val sortDirection: SortDirection = SortDirection.ASCENDING,
     val showHidden: Boolean = true,
     val showImageThumbnails: Boolean = true,
-    val showVideoThumbnails: Boolean = true
+    val showVideoThumbnails: Boolean = true,
+    val showFloatingActionDrawer: Boolean = false,
+    val selectionModeActive: Boolean = false,
+    val selectedItems: Set<String> = emptySet(),
+    val searchActive: Boolean = false,
+    val searchQuery: String = "",
+    val foldersFirst: Boolean = true
 )

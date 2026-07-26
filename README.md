@@ -37,17 +37,24 @@ The app is built using **Clean Architecture** principles and the **MVVM (Model-V
 
 ### 3. File Explorer & Navigation
 * **Connection Drawer**: A slide-out navigation panel providing quick access to active profile details, bucket storage stats (iteratively crawled and cached in Room for accuracy), and setup links.
+* **Floating Action Drawer**: Bottom sheet drawer replacing standard FAB for operations: Create New Folder, Upload File, and Take Photo directly from camera (utilizing `FileProvider`).
 * **Dynamic View Modes**: Toggle seamlessly between four layouts:
   - **Detailed List:** Standard vertical layout with full size and modification details.
   - **Compact List:** Dense vertical list showing file name only.
   - **Gallery Small:** 2-column square grid of media cards.
   - **Gallery Large:** 1-column layout of large square media cards.
 * **Scroll State Preservation**: All layout changes occur dynamically inside a single `LazyVerticalGrid`, keeping the scroll position perfectly preserved.
-* **Interactive Breadcrumbs**: Tap-to-navigate path indicator allowing quick jumps to any parent directory in the path hierarchy.
-* **Explorer File Sorting & Filtering**: Sort bucket objects dynamically by Name, Size, Type (extension-ordered), or Last Updated. Switch directions between Ascending and Descending. Toggle the visibility of hidden files (dotfiles) dynamically. Preferences are persisted in DataStore and applied using dynamic Room queries.
+* **Interactive Breadcrumbs**: Tap-to-navigate path indicator allowing quick jumps to any parent directory in the path hierarchy. Navigation actions automatically dismiss search state before moving to destination.
+* **Selection Mode**: Toggle selection mode from the toolbar to select items with checkboxes across both list and gallery views.
+* **Explorer File Sorting & Filtering**: Sort bucket objects dynamically by Name, Size, Type (extension-ordered), or Last Updated. Switch directions between Ascending and Descending, toggle "Folders first", or filter items using real-time search mode powered by dynamic SQLite `LIKE` queries. Toggle the visibility of hidden files (dotfiles) dynamically. Preferences are persisted in DataStore.
 
 ### 4. Settings & Configurations
 * **Account Settings**: Isolated by `profileId`. Configures filename encryption, multipart upload thresholds, upload concurrency limit, and local cache lifecycle (clear docs/thumbnails cache).
+* **Advanced Upload Features**: 
+  - **E2E Encryption:** Encrypt file payloads with AES-GCM prior to upload using a profile passphrase stored in Android `EncryptedSharedPreferences`, injecting the IV in `x-amz-meta-iv`.
+  - **MD5 Hash Verification:** Calculates payload MD5 and transmits `Content-MD5` header.
+  - **Storage Class Customization:** Applies custom/S3-compatible storage class headers to uploads.
+  - **Skip Same File Upload:** Executes `HEAD` checks for files >= 10KB to skip re-uploading identical size and modification time (`x-amz-meta-mtime`) objects.
 * **Global Settings**: App-wide options including "Trust insecure SSL/TLS certificates" (allows connections to self-signed local NAS/MinIO endpoints), biometric lock screen activation, dotfiles visibility, and date format styling.
 
 ### 5. High-Performance Media Thumbnails
@@ -67,7 +74,8 @@ The app is built using **Clean Architecture** principles and the **MVVM (Model-V
 ### 7. Branding & Theming
 * **Premium UI Palette:** Custom Material 3 color schemes derived from the official branding (Ocean Blue, Sky Blue, Warm Wood).
 * **Native Splash Screen:** Seamless launch experience utilizing Android 12's `core-splashscreen` library.
-* **Empty State Watermarks:** Desaturated, grayscale, non-intrusive watermark background in empty folders to reinforce branding.
+* **Watermark Background:** Desaturated, grayscale, non-intrusive watermark logo rendered behind all explorer contents across empty, loading, and populated states.
+
 ### 8. Connections Import, Export, & Management
 * **JSON/Base64 Portability:** Export your configured connections as a JSON array, encoded in Base64 for basic obfuscation. Saved under the `.dat` extension.
 * **System File Picker Integration:** Utilizes Android's Storage Access Framework (SAF) to let users import/export connection profiles directly to/from any system-recognized storage provider.
@@ -85,11 +93,11 @@ The app is built using **Clean Architecture** principles and the **MVVM (Model-V
 ```
 net.m21xx.s3explorer/
 ├── data/
-│   ├── local/              # Room DB, DAOs, Entities, Preferences DataStore
+│   ├── local/              # Room DB, DAOs, Entities, Preferences DataStore, Security
 │   ├── model/              # Domain-specific DTO models (e.g. ConnectionExportItem)
 │   ├── remote/             # AWS SDK networking wrappers
 │   └── repository/         # Data Repositories orchestrating caching & syncing
-├── domain/                 # Use Cases (Sync, Presigning, Config Exporter, Profile Save)
+├── domain/                 # Use Cases (Sync, Upload, Folder Creation, Presigning, Profile Save)
 └── ui/
     ├── components/         # Reusable UI widgets (e.g. Watermarks)
     ├── connection/         # New Connection & Connections List screens
@@ -124,6 +132,9 @@ net.m21xx.s3explorer/
 * Connections Import/Export & Bulk Management
 * AppLock & Biometric Security
 * Connection Validation & UI Refinements
+* Folder Creation & File/Camera Uploads
+* E2E Payload Encryption, MD5 Verification & Skip Same File Upload
+* Selection Mode & Explorer Search Navigation Refinements
 
 ---
 

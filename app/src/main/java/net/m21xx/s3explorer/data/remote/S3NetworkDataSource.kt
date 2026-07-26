@@ -2,6 +2,8 @@ package net.m21xx.s3explorer.data.remote
 
 import aws.sdk.kotlin.services.s3.model.ListBucketsRequest
 import aws.sdk.kotlin.services.s3.model.ListObjectsV2Request
+import aws.sdk.kotlin.services.s3.model.PutObjectRequest
+import aws.smithy.kotlin.runtime.content.ByteStream
 import javax.inject.Inject
 
 class S3NetworkDataSource @Inject constructor(
@@ -77,5 +79,76 @@ class S3NetworkDataSource @Inject constructor(
         } while (response.isTruncated == true && continuationToken != null)
 
         return Pair(totalSize, totalCount)
+    }
+
+    suspend fun createFolder(
+        profileId: String,
+        endpoint: String,
+        accessKey: String,
+        secretKey: String,
+        bucketName: String,
+        folderPath: String,
+        regionName: String = "us-east-1"
+    ) {
+        val s3Client = s3ClientManager.getClient(profileId, endpoint, accessKey, secretKey, regionName)
+        val formattedKey = if (folderPath.endsWith("/")) folderPath else "$folderPath/"
+        val request = PutObjectRequest {
+            bucket = bucketName
+            key = formattedKey
+            body = ByteStream.fromBytes(ByteArray(0))
+        }
+        s3Client.putObject(request)
+    }
+
+    suspend fun uploadObject(
+        profileId: String,
+        endpoint: String,
+        accessKey: String,
+        secretKey: String,
+        bucketName: String,
+        objectKey: String,
+        fileBytes: ByteArray,
+        regionName: String = "us-east-1",
+        storageClass: String? = null,
+        contentMd5: String? = null,
+        metadata: Map<String, String>? = null
+    ) {
+        val s3Client = s3ClientManager.getClient(profileId, endpoint, accessKey, secretKey, regionName)
+        val request = PutObjectRequest {
+            bucket = bucketName
+            key = objectKey
+            body = ByteStream.fromBytes(fileBytes)
+            if (!storageClass.isNullOrEmpty()) {
+                this.storageClass = aws.sdk.kotlin.services.s3.model.StorageClass.fromValue(storageClass)
+            }
+            if (!contentMd5.isNullOrEmpty()) {
+                this.contentMd5 = contentMd5
+            }
+            if (metadata != null) {
+                this.metadata = metadata
+            }
+        }
+        s3Client.putObject(request)
+    }
+
+    suspend fun headObject(
+        profileId: String,
+        endpoint: String,
+        accessKey: String,
+        secretKey: String,
+        bucketName: String,
+        objectKey: String,
+        regionName: String = "us-east-1"
+    ): aws.sdk.kotlin.services.s3.model.HeadObjectResponse? {
+        return try {
+            val s3Client = s3ClientManager.getClient(profileId, endpoint, accessKey, secretKey, regionName)
+            s3Client.headObject(aws.sdk.kotlin.services.s3.model.HeadObjectRequest {
+                bucket = bucketName
+                key = objectKey
+            })
+        } catch (e: Exception) {
+            // Either object doesn't exist, or no permission
+            null
+        }
     }
 }

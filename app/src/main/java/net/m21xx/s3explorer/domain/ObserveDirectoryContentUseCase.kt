@@ -21,7 +21,9 @@ class ObserveDirectoryContentUseCase @Inject constructor(
         parentPrefix: String,
         sortBy: SortBy,
         sortDirection: SortDirection,
-        showHidden: Boolean
+        showHidden: Boolean,
+        searchQuery: String = "",
+        foldersFirst: Boolean = true
     ): Flow<PagingData<S3ObjectEntity>> {
         val queryString = buildString {
             append("SELECT * FROM s3_objects WHERE profileId = ? AND bucketName = ? AND parentPrefix = ? ")
@@ -31,7 +33,14 @@ class ObserveDirectoryContentUseCase @Inject constructor(
                 // In SQLite: objectKey NOT LIKE :parentPrefix || '.%'
                 append("AND objectKey NOT LIKE ? ")
             }
-            append("ORDER BY isDirectory DESC, ")
+            if (searchQuery.isNotBlank()) {
+                append("AND objectKey LIKE ? ")
+            }
+            if (foldersFirst) {
+                append("ORDER BY isDirectory DESC, ")
+            } else {
+                append("ORDER BY ")
+            }
             
             val sortField = when (sortBy) {
                 SortBy.NAME -> "objectKey"
@@ -51,6 +60,9 @@ class ObserveDirectoryContentUseCase @Inject constructor(
         val args = mutableListOf<Any>(profileId, bucketName, parentPrefix)
         if (!showHidden) {
             args.add(parentPrefix + ".%")
+        }
+        if (searchQuery.isNotBlank()) {
+            args.add(parentPrefix + "%" + searchQuery + "%")
         }
         
         val query = SimpleSQLiteQuery(queryString, args.toTypedArray())

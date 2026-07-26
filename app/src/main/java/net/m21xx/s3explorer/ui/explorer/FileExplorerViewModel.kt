@@ -23,6 +23,8 @@ import net.m21xx.s3explorer.domain.ForceSyncUseCase
 import net.m21xx.s3explorer.domain.GetPresignedUrlUseCase
 import net.m21xx.s3explorer.domain.ObserveDirectoryContentUseCase
 import net.m21xx.s3explorer.domain.SyncDirectoryUseCase
+import net.m21xx.s3explorer.domain.CreateFolderUseCase
+import net.m21xx.s3explorer.domain.UploadObjectUseCase
 import android.webkit.MimeTypeMap
 import javax.inject.Inject
 
@@ -35,7 +37,9 @@ class FileExplorerViewModel @Inject constructor(
     private val calculateStorageStatsUseCase: CalculateStorageStatsUseCase,
     private val connectionRepository: ConnectionRepository,
     private val settingsDataStore: SettingsDataStore,
-    private val getPresignedUrlUseCase: GetPresignedUrlUseCase
+    private val getPresignedUrlUseCase: GetPresignedUrlUseCase,
+    private val createFolderUseCase: CreateFolderUseCase,
+    private val uploadObjectUseCase: UploadObjectUseCase
 ) : ViewModel() {
  
     private val thumbnailCache = java.util.concurrent.ConcurrentHashMap<String, String>()
@@ -47,12 +51,14 @@ class FileExplorerViewModel @Inject constructor(
     val pagedObjects: Flow<PagingData<S3ObjectEntity>> = _uiState
         .flatMapLatest { state ->
             observeDirectoryContentUseCase.execute(
-                state.profileId, 
-                state.bucketName, 
-                state.currentPrefix,
-                state.sortBy,
-                state.sortDirection,
-                state.showHidden
+                profileId = state.profileId, 
+                bucketName = state.bucketName, 
+                parentPrefix = state.currentPrefix,
+                sortBy = state.sortBy,
+                sortDirection = state.sortDirection,
+                showHidden = state.showHidden,
+                searchQuery = state.searchQuery,
+                foldersFirst = state.foldersFirst
             )
         }
         .cachedIn(viewModelScope)
@@ -124,7 +130,13 @@ class FileExplorerViewModel @Inject constructor(
     }
 
     fun navigateToFolder(prefix: String) {
-        _uiState.update { it.copy(currentPrefix = prefix) }
+        _uiState.update { 
+            it.copy(
+                currentPrefix = prefix,
+                searchActive = false,
+                searchQuery = ""
+            ) 
+        }
         syncCurrentDirectory()
     }
 
@@ -133,8 +145,21 @@ class FileExplorerViewModel @Inject constructor(
         if (current.isNotEmpty()) {
             val parts = current.dropLast(1).split("/")
             val newPrefix = if (parts.size <= 1) "" else parts.dropLast(1).joinToString("/") + "/"
-            _uiState.update { it.copy(currentPrefix = newPrefix) }
+            _uiState.update { 
+                it.copy(
+                    currentPrefix = newPrefix,
+                    searchActive = false,
+                    searchQuery = ""
+                ) 
+            }
             syncCurrentDirectory()
+        } else if (_uiState.value.searchActive) {
+            _uiState.update { 
+                it.copy(
+                    searchActive = false,
+                    searchQuery = ""
+                ) 
+            }
         }
     }
 
@@ -234,6 +259,94 @@ class FileExplorerViewModel @Inject constructor(
     fun toggleRemoveCredentialsDialog(show: Boolean) {
         _uiState.update { 
             it.copy(drawerState = it.drawerState.copy(showRemoveCredentialsDialog = show)) 
+        }
+    }
+
+    fun toggleFloatingActionDrawer(show: Boolean) {
+        _uiState.update { it.copy(showFloatingActionDrawer = show) }
+    }
+
+    fun toggleSelectionMode() {
+        _uiState.update { state ->
+            val nextActive = !state.selectionModeActive
+            state.copy(
+                selectionModeActive = nextActive,
+                selectedItems = if (nextActive) state.selectedItems else emptySet()
+            )
+        }
+    }
+
+    fun toggleItemSelection(objectKey: String) {
+        _uiState.update { state ->
+            val newSelection = state.selectedItems.toMutableSet()
+            if (newSelection.contains(objectKey)) {
+                newSelection.remove(objectKey)
+            } else {
+                newSelection.add(objectKey)
+            }
+            state.copy(selectedItems = newSelection)
+        }
+    }
+
+    fun toggleSearch() {
+        _uiState.update { state ->
+            val nextActive = !state.searchActive
+            state.copy(
+                searchActive = nextActive,
+                searchQuery = if (nextActive) state.searchQuery else ""
+            )
+        }
+    }
+
+    fun updateSearchQuery(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+    }
+
+    fun toggleFoldersFirst() {
+        _uiState.update { it.copy(foldersFirst = !it.foldersFirst) }
+    }
+
+    fun createFolder(folderName: String) {
+        val state = _uiState.value
+        if (state.profileId.isEmpty() || folderName.isBlank()) return
+        
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncing = true) }
+            try {
+                val fullPath = if (state.currentPrefix.isEmpty()) {
+                    "$folderName/"
+                } else {
+                    "${state.currentPrefix}$folderName/"
+                }
+                createFolderUseCase.execute(state.profileId, state.bucketName, fullPath)
+                syncCurrentDirectory()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = e.message ?: "Failed to create folder") }
+            } finally {
+                _uiState.update { it.copy(isSyncing = false) }
+            }
+        }
+    }
+
+    fun uploadFile(fileName: String, fileBytes: ByteArray, lastModified: Long? = null) {
+        val state = _uiState.value
+        if (state.profileId.isEmpty() || fileName.isBlank()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncing = true) }
+            try {
+                val fullKey = if (state.currentPrefix.isEmpty()) {
+                    fileName
+                } else {
+                    "${state.currentPrefix}$fileName"
+                }
+                uploadObjectUseCase.execute(state.profileId, state.bucketName, fullKey, fileBytes, lastModified)
+                syncCurrentDirectory()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = e.message ?: "Failed to upload file") }
+            } finally {
+                _uiState.update { it.copy(isSyncing = false) }
+            }
         }
     }
 }

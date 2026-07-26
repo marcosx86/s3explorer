@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 data class ProfilePreferences(
     val filenameEncryptionEnabled: Boolean = false,
+    val e2eEncryptionEnabled: Boolean = false,
     val storageClass: String = "",
     val skipSameFileUpload: Boolean = false,
     val multipartUploadThresholdMB: Int = 150,
@@ -42,6 +43,7 @@ class ProfilePreferencesDataStore @Inject constructor(
     }
 
     private val FILENAME_ENCRYPTION_KEY = booleanPreferencesKey("filename_encryption")
+    private val E2E_ENCRYPTION_KEY = booleanPreferencesKey("e2e_encryption")
     private val STORAGE_CLASS_KEY = stringPreferencesKey("storage_class")
     private val SKIP_SAME_FILE_UPLOAD_KEY = booleanPreferencesKey("skip_same_file_upload")
     private val MULTIPART_THRESHOLD_KEY = intPreferencesKey("multipart_threshold_mb")
@@ -58,6 +60,7 @@ class ProfilePreferencesDataStore @Inject constructor(
         return getDataStore(profileId).data.map { prefs ->
             ProfilePreferences(
                 filenameEncryptionEnabled = prefs[FILENAME_ENCRYPTION_KEY] ?: false,
+                e2eEncryptionEnabled = prefs[E2E_ENCRYPTION_KEY] ?: false,
                 storageClass = prefs[STORAGE_CLASS_KEY] ?: "",
                 skipSameFileUpload = prefs[SKIP_SAME_FILE_UPLOAD_KEY] ?: false,
                 multipartUploadThresholdMB = prefs[MULTIPART_THRESHOLD_KEY] ?: 150,
@@ -76,6 +79,12 @@ class ProfilePreferencesDataStore @Inject constructor(
     suspend fun setFilenameEncryption(profileId: String, enabled: Boolean) {
         getDataStore(profileId).edit { prefs ->
             prefs[FILENAME_ENCRYPTION_KEY] = enabled
+        }
+    }
+
+    suspend fun setE2EEncryption(profileId: String, enabled: Boolean) {
+        getDataStore(profileId).edit { prefs ->
+            prefs[E2E_ENCRYPTION_KEY] = enabled
         }
     }
 

@@ -34,4 +34,16 @@ class SecureStorage @Inject constructor(
     fun deleteSecretKey(profileId: String) {
         sharedPreferences.edit().remove(profileId).apply()
     }
+
+    fun savePassphrase(profileId: String, passphrase: String) {
+        sharedPreferences.edit().putString("${profileId}_passphrase", passphrase).apply()
+    }
+
+    fun getPassphrase(profileId: String): String? {
+        return sharedPreferences.getString("${profileId}_passphrase", null)
+    }
+
+    fun deletePassphrase(profileId: String) {
+        sharedPreferences.edit().remove("${profileId}_passphrase").apply()
+    }
 }

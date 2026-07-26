@@ -22,6 +22,9 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Upload
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -39,6 +42,11 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.Folder
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 import net.m21xx.s3explorer.ui.explorer.components.ConnectionDrawerSheet
 import net.m21xx.s3explorer.ui.components.WatermarkBackground
 
@@ -63,8 +71,72 @@ fun FileExplorerScreen(
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
     var sortMenuExpanded by remember { mutableStateOf(false) }
 
-    BackHandler(enabled = uiState.currentPrefix.isNotEmpty()) {
-        viewModel.navigateUp()
+    var showNewFolderDialog by remember { mutableStateOf(false) }
+    var newFolderName by remember { mutableStateOf("") }
+
+    val context = LocalContext.current
+    val contentResolver = context.contentResolver
+    
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            val cursor = contentResolver.query(it, null, null, null, null)
+            val nameIndex = cursor?.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            val lastModifiedIndex = cursor?.getColumnIndex(android.provider.DocumentsContract.Document.COLUMN_LAST_MODIFIED)
+            
+            cursor?.moveToFirst()
+            val fileName = nameIndex?.let { idx -> cursor.getString(idx) } ?: "upload_${System.currentTimeMillis()}"
+            val lastModified = if (lastModifiedIndex != null && lastModifiedIndex >= 0) cursor.getLong(lastModifiedIndex) else null
+            cursor?.close()
+            
+            try {
+                contentResolver.openInputStream(it)?.use { inputStream ->
+                    val bytes = inputStream.readBytes()
+                    viewModel.uploadFile(fileName, bytes, lastModified)
+                }
+            } catch (e: Exception) {
+                // Ignore or show snackbar
+            }
+        }
+    }
+
+    val tempPhotoFile = remember {
+        java.io.File(context.cacheDir, "camera_photo.jpg")
+    }
+
+    val photoUri = remember {
+        try {
+            androidx.core.content.FileProvider.getUriForFile(
+                context,
+                "net.m21xx.s3explorer.fileprovider",
+                tempPhotoFile
+            )
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            try {
+                val fileBytes = tempPhotoFile.readBytes()
+                val lastModified = tempPhotoFile.lastModified()
+                viewModel.uploadFile("photo_${System.currentTimeMillis()}.jpg", fileBytes, lastModified)
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+    }
+
+    BackHandler(enabled = uiState.currentPrefix.isNotEmpty() || uiState.searchActive) {
+        if (uiState.searchActive) {
+            viewModel.toggleSearch()
+        } else {
+            viewModel.navigateUp()
+        }
     }
 
     LaunchedEffect(uiState.errorMessage) {
@@ -127,10 +199,25 @@ fun FileExplorerScreen(
             Column {
                 TopAppBar(
                     title = { 
-                        Breadcrumbs(
-                            currentPrefix = uiState.currentPrefix,
-                            onNavigate = { prefix -> viewModel.navigateToFolder(prefix) }
-                        )
+                        if (uiState.searchActive) {
+                            OutlinedTextField(
+                                value = uiState.searchQuery,
+                                onValueChange = { viewModel.updateSearchQuery(it) },
+                                placeholder = { Text("Search files...") },
+                                modifier = Modifier.fillMaxWidth().padding(end = 16.dp),
+                                singleLine = true,
+                                trailingIcon = {
+                                    IconButton(onClick = { viewModel.toggleSearch() }) {
+                                        Icon(Icons.Default.Close, contentDescription = "Close search")
+                                    }
+                                }
+                            )
+                        } else {
+                            Breadcrumbs(
+                                currentPrefix = uiState.currentPrefix,
+                                onNavigate = { prefix -> viewModel.navigateToFolder(prefix) }
+                            )
+                        }
                     },
                     navigationIcon = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -145,7 +232,7 @@ fun FileExplorerScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { /* TODO: Add file/folder */ }) {
+                        IconButton(onClick = { viewModel.toggleFloatingActionDrawer(true) }) {
                             Icon(Icons.Default.Add, contentDescription = "Add")
                         }
                         IconButton(onClick = onNavigateToConnections) {
@@ -226,6 +313,17 @@ fun FileExplorerScreen(
                                     ) 
                                 }
                             )
+
+                            DropdownMenuItem(
+                                text = { Text("Folders first") },
+                                onClick = { viewModel.toggleFoldersFirst(); sortMenuExpanded = false },
+                                trailingIcon = { 
+                                    Switch(
+                                        checked = uiState.foldersFirst,
+                                        onCheckedChange = { viewModel.toggleFoldersFirst(); sortMenuExpanded = false }
+                                    ) 
+                                }
+                            )
                         }
                     }
 
@@ -235,12 +333,20 @@ fun FileExplorerScreen(
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    IconButton(onClick = { /* TODO: Selection mode */ }) {
-                        Icon(Icons.Default.Checklist, contentDescription = "Selection Mode")
+                    IconButton(onClick = { viewModel.toggleSelectionMode() }) {
+                        Icon(
+                            imageVector = Icons.Default.Checklist,
+                            contentDescription = "Selection Mode",
+                            tint = if (uiState.selectionModeActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
                     }
-
-                    IconButton(onClick = { /* TODO: Search */ }) {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
+ 
+                    IconButton(onClick = { viewModel.toggleSearch() }) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = if (uiState.searchActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
                     }
 
                     val viewModeIcon = when (uiState.viewMode) {
@@ -257,6 +363,8 @@ fun FileExplorerScreen(
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+            WatermarkBackground()
+
             if (pagingItems.loadState.refresh is LoadState.Loading || uiState.isSyncing) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
@@ -267,7 +375,6 @@ fun FileExplorerScreen(
                     onRetry = { viewModel.syncCurrentDirectory() }
                 )
             } else if (pagingItems.loadState.refresh is LoadState.NotLoading && pagingItems.itemCount == 0 && !uiState.isSyncing) {
-                WatermarkBackground()
                 EmptyDirectoryState()
             } else {
                 val gridCells = when (uiState.viewMode) {
@@ -296,11 +403,17 @@ fun FileExplorerScreen(
                                     ExplorerViewMode.COMPACT_LIST -> FolderItem(
                                         item = item,
                                         isCompact = uiState.viewMode == ExplorerViewMode.COMPACT_LIST,
+                                        selectionModeActive = uiState.selectionModeActive,
+                                        isSelected = uiState.selectedItems.contains(item.objectKey),
+                                        onSelect = { viewModel.toggleItemSelection(item.objectKey) },
                                         onClick = { viewModel.navigateToFolder(item.objectKey) }
                                     )
                                     ExplorerViewMode.GALLERY_SMALL,
                                     ExplorerViewMode.GALLERY_LARGE -> GalleryFolderCardItem(
                                         item = item,
+                                        selectionModeActive = uiState.selectionModeActive,
+                                        isSelected = uiState.selectedItems.contains(item.objectKey),
+                                        onSelect = { viewModel.toggleItemSelection(item.objectKey) },
                                         onClick = { viewModel.navigateToFolder(item.objectKey) }
                                     )
                                 }
@@ -312,6 +425,9 @@ fun FileExplorerScreen(
                                         showVideoThumbnails = uiState.showVideoThumbnails,
                                         getThumbnailUrl = { viewModel.getThumbnailUrl(it) },
                                         getThumbnailUrlSync = { viewModel.getThumbnailUrlSync(it) },
+                                        selectionModeActive = uiState.selectionModeActive,
+                                        isSelected = uiState.selectedItems.contains(item.objectKey),
+                                        onSelect = { viewModel.toggleItemSelection(item.objectKey) },
                                         onClick = { onNavigateToMediaViewer(uiState.profileId, uiState.bucketName, uiState.currentPrefix, item.objectKey) }
                                     )
                                     ExplorerViewMode.COMPACT_LIST -> CompactListItem(
@@ -320,6 +436,9 @@ fun FileExplorerScreen(
                                         showVideoThumbnails = uiState.showVideoThumbnails,
                                         getThumbnailUrl = { viewModel.getThumbnailUrl(it) },
                                         getThumbnailUrlSync = { viewModel.getThumbnailUrlSync(it) },
+                                        selectionModeActive = uiState.selectionModeActive,
+                                        isSelected = uiState.selectedItems.contains(item.objectKey),
+                                        onSelect = { viewModel.toggleItemSelection(item.objectKey) },
                                         onClick = { onNavigateToMediaViewer(uiState.profileId, uiState.bucketName, uiState.currentPrefix, item.objectKey) }
                                     )
                                     ExplorerViewMode.GALLERY_SMALL,
@@ -329,6 +448,9 @@ fun FileExplorerScreen(
                                         showVideoThumbnails = uiState.showVideoThumbnails,
                                         getThumbnailUrl = { viewModel.getThumbnailUrl(it) },
                                         getThumbnailUrlSync = { viewModel.getThumbnailUrlSync(it) },
+                                        selectionModeActive = uiState.selectionModeActive,
+                                        isSelected = uiState.selectedItems.contains(item.objectKey),
+                                        onSelect = { viewModel.toggleItemSelection(item.objectKey) },
                                         onClick = { onNavigateToMediaViewer(uiState.profileId, uiState.bucketName, uiState.currentPrefix, item.objectKey) }
                                     )
                                 }
@@ -358,6 +480,91 @@ fun FileExplorerScreen(
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.toggleRemoveCredentialsDialog(false) }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (uiState.showFloatingActionDrawer) {
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.toggleFloatingActionDrawer(false) }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .navigationBarsPadding()
+            ) {
+                Text(
+                    text = "Actions",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                ListItem(
+                    headlineContent = { Text("New folder") },
+                    leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        viewModel.toggleFloatingActionDrawer(false)
+                        showNewFolderDialog = true
+                    }
+                )
+                ListItem(
+                    headlineContent = { Text("Upload file") },
+                    leadingContent = { Icon(Icons.Default.Upload, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        viewModel.toggleFloatingActionDrawer(false)
+                        filePickerLauncher.launch("*/*")
+                    }
+                )
+                ListItem(
+                    headlineContent = { Text("Take photo") },
+                    leadingContent = { Icon(Icons.Default.CameraAlt, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        viewModel.toggleFloatingActionDrawer(false)
+                        val photoFileExists = try {
+                            if (tempPhotoFile.exists()) tempPhotoFile.delete()
+                            tempPhotoFile.createNewFile()
+                        } catch (e: Exception) {
+                            false
+                        }
+                        if (photoFileExists && photoUri != null) {
+                            cameraLauncher.launch(photoUri)
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    if (showNewFolderDialog) {
+        AlertDialog(
+            onDismissRequest = { showNewFolderDialog = false; newFolderName = "" },
+            title = { Text("New Folder") },
+            text = {
+                OutlinedTextField(
+                    value = newFolderName,
+                    onValueChange = { newFolderName = it },
+                    label = { Text("Folder Name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (newFolderName.isNotBlank()) {
+                            viewModel.createFolder(newFolderName)
+                        }
+                        showNewFolderDialog = false
+                        newFolderName = ""
+                    }
+                ) {
+                    Text("Create")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewFolderDialog = false; newFolderName = "" }) {
                     Text("Cancel")
                 }
             }
