@@ -94,14 +94,14 @@ fun MediaViewerScreen(
                     onLeftBorderTap = {
                         if (pagerState.currentPage > 0) {
                             coroutineScope.launch {
-                                pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                                pagerState.scrollToPage(pagerState.currentPage - 1)
                             }
                         }
                     },
                     onRightBorderTap = {
                         if (pagerState.currentPage < pagerState.pageCount - 1) {
                             coroutineScope.launch {
-                                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                pagerState.scrollToPage(pagerState.currentPage + 1)
                             }
                         }
                     },

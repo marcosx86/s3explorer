@@ -140,6 +140,7 @@ fun FolderItem(
         }
     } else {
         ListItem(
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
             modifier = Modifier.clickable { if (selectionModeActive) onSelect() else onClick() },
             headlineContent = {
                 Text(
@@ -268,6 +269,7 @@ fun DetailedListItem(
     }
 
     ListItem(
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier.clickable { if (selectionModeActive) onSelect() else onClick() },
         headlineContent = {
             Text(
