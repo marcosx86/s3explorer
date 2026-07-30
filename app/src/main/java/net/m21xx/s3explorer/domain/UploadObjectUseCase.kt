@@ -11,13 +11,16 @@ import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
+import kotlinx.coroutines.launch
+import net.m21xx.s3explorer.domain.transfer.TransferManager
 import javax.inject.Inject
 
 class UploadObjectUseCase @Inject constructor(
     private val connectionProfileDao: ConnectionProfileDao,
     private val connectionRepository: ConnectionRepository,
     private val s3NetworkDataSource: S3NetworkDataSource,
-    private val profilePreferencesDataStore: ProfilePreferencesDataStore
+    private val profilePreferencesDataStore: ProfilePreferencesDataStore,
+    private val transferManager: TransferManager
 ) {
     suspend fun execute(
         profileId: String, 
@@ -100,18 +103,55 @@ class UploadObjectUseCase @Inject constructor(
 
         val storageClass = prefs?.storageClass?.takeIf { it.isNotEmpty() }
 
-        s3NetworkDataSource.uploadObject(
+        val transferId = java.util.UUID.randomUUID().toString()
+        val transferState = net.m21xx.s3explorer.domain.transfer.TransferState(
+            id = transferId,
+            type = net.m21xx.s3explorer.domain.transfer.TransferType.UPLOAD,
             profileId = profileId,
-            endpoint = profile.endpointUrl,
-            accessKey = profile.accessKey,
-            secretKey = secretKey,
             bucketName = bucketName,
             objectKey = objectKey,
-            fileBytes = payloadToUpload,
-            regionName = profile.region,
-            storageClass = storageClass,
-            contentMd5 = contentMd5,
-            metadata = metadata.ifEmpty { null }
+            fileName = objectKey.substringAfterLast('/'),
+            totalBytes = payloadToUpload.size.toLong(),
+            transferredBytes = 0L,
+            status = net.m21xx.s3explorer.domain.transfer.TransferStatus.QUEUED
         )
+        
+        transferManager.addTransfer(transferState)
+        transferManager.updateTransferStatus(transferId, net.m21xx.s3explorer.domain.transfer.TransferStatus.IN_PROGRESS)
+
+        try {
+            // Emulate progress for UI feedback since payload is already in memory
+            val job = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                val total = payloadToUpload.size.toLong()
+                var current = 0L
+                val chunkSize = (total / 10).coerceAtLeast(1024)
+                while (current < total) {
+                    kotlinx.coroutines.delay(200)
+                    current = (current + chunkSize).coerceAtMost(total)
+                    transferManager.updateTransferProgress(transferId, current, chunkSize * 5)
+                }
+            }
+
+            s3NetworkDataSource.uploadObject(
+                profileId = profileId,
+                endpoint = profile.endpointUrl,
+                accessKey = profile.accessKey,
+                secretKey = secretKey,
+                bucketName = bucketName,
+                objectKey = objectKey,
+                fileBytes = payloadToUpload,
+                regionName = profile.region,
+                storageClass = storageClass,
+                contentMd5 = contentMd5,
+                metadata = metadata.ifEmpty { null }
+            )
+            
+            job.cancel()
+            transferManager.updateTransferProgress(transferId, payloadToUpload.size.toLong(), 0L)
+            transferManager.updateTransferStatus(transferId, net.m21xx.s3explorer.domain.transfer.TransferStatus.COMPLETED)
+        } catch (e: Exception) {
+            transferManager.updateTransferStatus(transferId, net.m21xx.s3explorer.domain.transfer.TransferStatus.FAILED, e.message)
+            throw e
+        }
     }
 }

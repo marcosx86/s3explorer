@@ -102,6 +102,7 @@ fun FolderItem(
     selectionModeActive: Boolean = false,
     isSelected: Boolean = false,
     onSelect: () -> Unit = {},
+    onActionClick: (S3ObjectEntity) -> Unit = {},
     onClick: () -> Unit
 ) {
     val folderName = item.objectKey.removePrefix(item.parentPrefix).removeSuffix("/")
@@ -132,7 +133,7 @@ fun FolderItem(
                 style = MaterialTheme.typography.bodyMedium
             )
             IconButton(
-                onClick = { /* TODO: Context menu */ },
+                onClick = { onActionClick(item) },
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(Icons.Default.MoreVert, contentDescription = "Options", modifier = Modifier.size(20.dp))
@@ -164,7 +165,7 @@ fun FolderItem(
                 }
             },
             trailingContent = {
-                IconButton(onClick = { /* TODO: Context menu */ }) {
+                IconButton(onClick = { onActionClick(item) }) {
                     Icon(Icons.Default.MoreVert, contentDescription = "Options")
                 }
             }
@@ -179,6 +180,7 @@ fun GalleryFolderCardItem(
     selectionModeActive: Boolean = false,
     isSelected: Boolean = false,
     onSelect: () -> Unit = {},
+    onActionClick: (S3ObjectEntity) -> Unit = {},
     onClick: () -> Unit
 ) {
     val folderName = item.objectKey.removePrefix(item.parentPrefix).removeSuffix("/")
@@ -223,7 +225,7 @@ fun GalleryFolderCardItem(
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(
-                        onClick = { /* TODO: Context menu */ },
+                        onClick = { onActionClick(item) },
                         modifier = Modifier.size(24.dp)
                     ) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Options", modifier = Modifier.size(16.dp))
@@ -244,6 +246,7 @@ fun DetailedListItem(
     selectionModeActive: Boolean = false,
     isSelected: Boolean = false,
     onSelect: () -> Unit = {},
+    onActionClick: (S3ObjectEntity) -> Unit = {},
     onClick: () -> Unit
 ) {
     val fileName = item.objectKey.removePrefix(item.parentPrefix)
@@ -323,7 +326,7 @@ fun DetailedListItem(
             }
         },
         trailingContent = {
-            IconButton(onClick = { /* TODO: Context menu */ }) {
+            IconButton(onClick = { onActionClick(item) }) {
                 Icon(Icons.Default.MoreVert, contentDescription = "Options")
             }
         }
@@ -341,6 +344,7 @@ fun CompactListItem(
     selectionModeActive: Boolean = false,
     isSelected: Boolean = false,
     onSelect: () -> Unit = {},
+    onActionClick: (S3ObjectEntity) -> Unit = {},
     onClick: () -> Unit
 ) {
     val fileName = item.objectKey.removePrefix(item.parentPrefix)
@@ -416,7 +420,7 @@ fun CompactListItem(
             modifier = Modifier.weight(1f)
         )
         IconButton(
-            onClick = { /* TODO: Context menu */ },
+            onClick = { onActionClick(item) },
             modifier = Modifier.size(32.dp)
         ) {
             Icon(Icons.Default.MoreVert, contentDescription = "Options", modifier = Modifier.size(20.dp))
@@ -434,6 +438,7 @@ fun GalleryCardItem(
     selectionModeActive: Boolean = false,
     isSelected: Boolean = false,
     onSelect: () -> Unit = {},
+    onActionClick: (S3ObjectEntity) -> Unit = {},
     onClick: () -> Unit
 ) {
     val fileName = item.objectKey.removePrefix(item.parentPrefix)
@@ -523,7 +528,7 @@ fun GalleryCardItem(
                         modifier = Modifier.weight(1f)
                     )
                     IconButton(
-                        onClick = { /* TODO: Context menu */ },
+                        onClick = { onActionClick(item) },
                         modifier = Modifier.size(24.dp)
                     ) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Options", modifier = Modifier.size(16.dp))

@@ -25,6 +25,12 @@ import net.m21xx.s3explorer.domain.ObserveDirectoryContentUseCase
 import net.m21xx.s3explorer.domain.SyncDirectoryUseCase
 import net.m21xx.s3explorer.domain.CreateFolderUseCase
 import net.m21xx.s3explorer.domain.UploadObjectUseCase
+import net.m21xx.s3explorer.domain.DeleteObjectUseCase
+import net.m21xx.s3explorer.domain.RenameObjectUseCase
+import net.m21xx.s3explorer.domain.DownloadObjectUseCase
+import net.m21xx.s3explorer.domain.GetFolderStatsUseCase
+import net.m21xx.s3explorer.domain.transfer.TransferManager
+import net.m21xx.s3explorer.domain.transfer.TransferState
 import android.webkit.MimeTypeMap
 import javax.inject.Inject
 
@@ -39,13 +45,20 @@ class FileExplorerViewModel @Inject constructor(
     private val settingsDataStore: SettingsDataStore,
     private val getPresignedUrlUseCase: GetPresignedUrlUseCase,
     private val createFolderUseCase: CreateFolderUseCase,
-    private val uploadObjectUseCase: UploadObjectUseCase
+    private val uploadObjectUseCase: UploadObjectUseCase,
+    private val deleteObjectUseCase: DeleteObjectUseCase,
+    private val renameObjectUseCase: RenameObjectUseCase,
+    private val downloadObjectUseCase: DownloadObjectUseCase,
+    private val getFolderStatsUseCase: GetFolderStatsUseCase,
+    private val transferManager: TransferManager
 ) : ViewModel() {
  
     private val thumbnailCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     private val _uiState = MutableStateFlow(FileExplorerState())
     val uiState: StateFlow<FileExplorerState> = _uiState.asStateFlow()
+
+    val transfers: StateFlow<List<TransferState>> = transferManager.transfers
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val pagedObjects: Flow<PagingData<S3ObjectEntity>> = _uiState
@@ -134,7 +147,9 @@ class FileExplorerViewModel @Inject constructor(
             it.copy(
                 currentPrefix = prefix,
                 searchActive = false,
-                searchQuery = ""
+                searchQuery = "",
+                selectionModeActive = false,
+                selectedItems = emptySet()
             ) 
         }
         syncCurrentDirectory()
@@ -149,7 +164,9 @@ class FileExplorerViewModel @Inject constructor(
                 it.copy(
                     currentPrefix = newPrefix,
                     searchActive = false,
-                    searchQuery = ""
+                    searchQuery = "",
+                    selectionModeActive = false,
+                    selectedItems = emptySet()
                 ) 
             }
             syncCurrentDirectory()
@@ -157,9 +174,20 @@ class FileExplorerViewModel @Inject constructor(
             _uiState.update { 
                 it.copy(
                     searchActive = false,
-                    searchQuery = ""
+                    searchQuery = "",
+                    selectionModeActive = false,
+                    selectedItems = emptySet()
                 ) 
             }
+        }
+    }
+
+    fun cancelSelectionMode() {
+        _uiState.update { 
+            it.copy(
+                selectionModeActive = false,
+                selectedItems = emptySet()
+            )
         }
     }
 
@@ -348,5 +376,73 @@ class FileExplorerViewModel @Inject constructor(
                 _uiState.update { it.copy(isSyncing = false) }
             }
         }
+    }
+
+    fun cancelTransfer(id: String) {
+        // Just remove for now, proper cancellation requires job references in TransferManager
+        transferManager.updateTransferStatus(id, net.m21xx.s3explorer.domain.transfer.TransferStatus.CANCELED)
+    }
+
+    fun deleteObjects(objectKeys: List<String>) {
+        val state = _uiState.value
+        if (state.profileId.isEmpty() || objectKeys.isEmpty()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncing = true) }
+            try {
+                deleteObjectUseCase.execute(state.profileId, state.bucketName, objectKeys)
+                syncCurrentDirectory()
+                _uiState.update { it.copy(selectedItems = emptySet(), selectionModeActive = false) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = e.message ?: "Failed to delete objects") }
+            } finally {
+                _uiState.update { it.copy(isSyncing = false) }
+            }
+        }
+    }
+
+    fun renameObject(oldKey: String, newKey: String) {
+        val state = _uiState.value
+        if (state.profileId.isEmpty()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncing = true) }
+            try {
+                renameObjectUseCase.execute(state.profileId, state.bucketName, oldKey, newKey)
+                syncCurrentDirectory()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = e.message ?: "Failed to rename object") }
+            } finally {
+                _uiState.update { it.copy(isSyncing = false) }
+            }
+        }
+    }
+
+    fun downloadObject(objectKey: String, downloadDir: java.io.File) {
+        val state = _uiState.value
+        if (state.profileId.isEmpty()) return
+
+        viewModelScope.launch {
+            try {
+                downloadObjectUseCase.execute(state.profileId, state.bucketName, objectKey, downloadDir)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(errorMessage = e.message ?: "Failed to start download") }
+            }
+        }
+    }
+
+    suspend fun getFolderStats(prefix: String): StorageStatsSummary? {
+        val state = _uiState.value
+        if (state.profileId.isEmpty()) return null
+
+        return try {
+            getFolderStatsUseCase.execute(state.profileId, state.bucketName, prefix)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun clearCompletedTransfers() {
+        transferManager.clearCompletedTransfers()
     }
 }

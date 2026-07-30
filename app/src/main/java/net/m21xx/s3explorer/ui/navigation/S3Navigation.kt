@@ -38,9 +38,6 @@ object Destinations {
     const val ACCOUNT_SETTINGS = "account_settings/{profileId}"
     fun accountSettingsRoute(profileId: String) = "account_settings/$profileId"
 
-    const val TRANSFERS = "transfers/{profileId}"
-    fun transfersRoute(profileId: String) = "transfers/$profileId"
-
     const val TRASH = "trash/{profileId}"
     fun trashRoute(profileId: String) = "trash/$profileId"
 
@@ -110,9 +107,6 @@ fun S3NavHost(
                 onNavigateToAccountSettings = { profileId ->
                     navController.navigate(Destinations.accountSettingsRoute(profileId))
                 },
-                onNavigateToTransfers = { profileId ->
-                    navController.navigate(Destinations.transfersRoute(profileId))
-                },
                 onNavigateToSettings = {
                     navController.navigate(Destinations.GLOBAL_SETTINGS)
                 },
@@ -150,13 +144,6 @@ fun S3NavHost(
             net.m21xx.s3explorer.ui.settings.AccountSettingsScreen(
                 onNavigateBack = { navController.popBackStack() }
             )
-        }
-
-        composable(
-            route = Destinations.TRANSFERS,
-            arguments = listOf(navArgument("profileId") { type = NavType.StringType })
-        ) {
-            PlaceholderScreen("Transfers", onNavigateBack = { navController.popBackStack() })
         }
 
         composable(

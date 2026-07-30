@@ -25,6 +25,10 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -49,6 +53,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
 import net.m21xx.s3explorer.ui.explorer.components.ConnectionDrawerSheet
 import net.m21xx.s3explorer.ui.components.WatermarkBackground
+import net.m21xx.s3explorer.ui.explorer.components.ObjectActionBottomSheet
+import net.m21xx.s3explorer.ui.explorer.components.DeleteConfirmationDialog
+import net.m21xx.s3explorer.ui.explorer.components.RenameDialog
+import net.m21xx.s3explorer.ui.explorer.components.PropertiesDialog
+import net.m21xx.s3explorer.data.local.entity.S3ObjectEntity
+import net.m21xx.s3explorer.domain.StorageStatsSummary
+import android.os.Environment
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,7 +68,6 @@ fun FileExplorerScreen(
     onNavigateToConnections: () -> Unit,
     onNavigateToMediaViewer: (profileId: String, bucketName: String, parentPrefix: String, initialObjectKey: String) -> Unit,
     onNavigateToAccountSettings: (profileId: String) -> Unit,
-    onNavigateToTransfers: (profileId: String) -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToMediaBackup: () -> Unit,
     onNavigateToTrash: (profileId: String) -> Unit,
@@ -73,6 +83,28 @@ fun FileExplorerScreen(
 
     var showNewFolderDialog by remember { mutableStateOf(false) }
     var newFolderName by remember { mutableStateOf("") }
+    
+    var contextObject by remember { mutableStateOf<S3ObjectEntity?>(null) }
+    var showTransfersSheet by remember { mutableStateOf(false) }
+    var itemsToDelete by remember { mutableStateOf<List<String>?>(null) }
+    var itemToRename by remember { mutableStateOf<S3ObjectEntity?>(null) }
+    var itemToShowProperties by remember { mutableStateOf<S3ObjectEntity?>(null) }
+    var folderStats by remember { mutableStateOf<StorageStatsSummary?>(null) }
+    var isLoadingStats by remember { mutableStateOf(false) }
+
+    val pullToRefreshState = rememberPullToRefreshState()
+
+    LaunchedEffect(pullToRefreshState.isRefreshing) {
+        if (pullToRefreshState.isRefreshing) {
+            viewModel.forceSync()
+        }
+    }
+
+    LaunchedEffect(uiState.isSyncing) {
+        if (!uiState.isSyncing) {
+            pullToRefreshState.endRefresh()
+        }
+    }
 
     val context = LocalContext.current
     val contentResolver = context.contentResolver
@@ -131,8 +163,10 @@ fun FileExplorerScreen(
         }
     }
 
-    BackHandler(enabled = uiState.currentPrefix.isNotEmpty() || uiState.searchActive) {
-        if (uiState.searchActive) {
+    BackHandler(enabled = uiState.currentPrefix.isNotEmpty() || uiState.searchActive || uiState.selectionModeActive) {
+        if (uiState.selectionModeActive) {
+            viewModel.cancelSelectionMode()
+        } else if (uiState.searchActive) {
             viewModel.toggleSearch()
         } else {
             viewModel.navigateUp()
@@ -155,6 +189,8 @@ fun FileExplorerScreen(
         }
     }
 
+
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -166,7 +202,7 @@ fun FileExplorerScreen(
                 },
                 onTransfersClick = { 
                     coroutineScope.launch { drawerState.close() }
-                    onNavigateToTransfers(uiState.profileId) 
+                    showTransfersSheet = true
                 },
                 onSyncClick = { 
                     coroutineScope.launch { drawerState.close() }
@@ -232,11 +268,19 @@ fun FileExplorerScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { viewModel.toggleFloatingActionDrawer(true) }) {
-                            Icon(Icons.Default.Add, contentDescription = "Add")
-                        }
-                        IconButton(onClick = onNavigateToConnections) {
-                            Icon(Icons.Default.Group, contentDescription = "Connections")
+                        if (uiState.selectionModeActive) {
+                            IconButton(onClick = { 
+                                itemsToDelete = uiState.selectedItems.toList() 
+                            }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete Selected", tint = MaterialTheme.colorScheme.error)
+                            }
+                        } else {
+                            IconButton(onClick = { viewModel.toggleFloatingActionDrawer(true) }) {
+                                Icon(Icons.Default.Add, contentDescription = "Add")
+                            }
+                            IconButton(onClick = onNavigateToConnections) {
+                                Icon(Icons.Default.Group, contentDescription = "Connections")
+                            }
                         }
                     }
                 )
@@ -362,7 +406,12 @@ fun FileExplorerScreen(
             }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+                .nestedScroll(pullToRefreshState.nestedScrollConnection)
+        ) {
             WatermarkBackground()
 
             if (pagingItems.loadState.refresh is LoadState.Loading || uiState.isSyncing) {
@@ -372,7 +421,7 @@ fun FileExplorerScreen(
             if (uiState.errorMessage != null && pagingItems.itemCount == 0 && !uiState.isSyncing) {
                 ErrorState(
                     message = uiState.errorMessage!!,
-                    onRetry = { viewModel.syncCurrentDirectory() }
+                    onRetry = { viewModel.forceSync() }
                 )
             } else if (pagingItems.loadState.refresh is LoadState.NotLoading && pagingItems.itemCount == 0 && !uiState.isSyncing) {
                 EmptyDirectoryState()
@@ -406,6 +455,7 @@ fun FileExplorerScreen(
                                         selectionModeActive = uiState.selectionModeActive,
                                         isSelected = uiState.selectedItems.contains(item.objectKey),
                                         onSelect = { viewModel.toggleItemSelection(item.objectKey) },
+                                        onActionClick = { contextObject = it },
                                         onClick = { viewModel.navigateToFolder(item.objectKey) }
                                     )
                                     ExplorerViewMode.GALLERY_SMALL,
@@ -414,6 +464,7 @@ fun FileExplorerScreen(
                                         selectionModeActive = uiState.selectionModeActive,
                                         isSelected = uiState.selectedItems.contains(item.objectKey),
                                         onSelect = { viewModel.toggleItemSelection(item.objectKey) },
+                                        onActionClick = { contextObject = it },
                                         onClick = { viewModel.navigateToFolder(item.objectKey) }
                                     )
                                 }
@@ -428,6 +479,7 @@ fun FileExplorerScreen(
                                         selectionModeActive = uiState.selectionModeActive,
                                         isSelected = uiState.selectedItems.contains(item.objectKey),
                                         onSelect = { viewModel.toggleItemSelection(item.objectKey) },
+                                        onActionClick = { contextObject = it },
                                         onClick = { onNavigateToMediaViewer(uiState.profileId, uiState.bucketName, uiState.currentPrefix, item.objectKey) }
                                     )
                                     ExplorerViewMode.COMPACT_LIST -> CompactListItem(
@@ -439,6 +491,7 @@ fun FileExplorerScreen(
                                         selectionModeActive = uiState.selectionModeActive,
                                         isSelected = uiState.selectedItems.contains(item.objectKey),
                                         onSelect = { viewModel.toggleItemSelection(item.objectKey) },
+                                        onActionClick = { contextObject = it },
                                         onClick = { onNavigateToMediaViewer(uiState.profileId, uiState.bucketName, uiState.currentPrefix, item.objectKey) }
                                     )
                                     ExplorerViewMode.GALLERY_SMALL,
@@ -451,6 +504,7 @@ fun FileExplorerScreen(
                                         selectionModeActive = uiState.selectionModeActive,
                                         isSelected = uiState.selectedItems.contains(item.objectKey),
                                         onSelect = { viewModel.toggleItemSelection(item.objectKey) },
+                                        onActionClick = { contextObject = it },
                                         onClick = { onNavigateToMediaViewer(uiState.profileId, uiState.bucketName, uiState.currentPrefix, item.objectKey) }
                                     )
                                 }
@@ -459,8 +513,14 @@ fun FileExplorerScreen(
                     }
                 }
             }
+
+            if (pullToRefreshState.isRefreshing || pullToRefreshState.progress > 0f || uiState.isSyncing) {
+                PullToRefreshContainer(
+                    state = pullToRefreshState,
+                    modifier = Modifier.align(Alignment.TopCenter)
+                )
+            }
         }
-    }
     }
 
     if (uiState.drawerState.showRemoveCredentialsDialog) {
@@ -570,4 +630,95 @@ fun FileExplorerScreen(
             }
         )
     }
+
+    contextObject?.let { obj ->
+        ObjectActionBottomSheet(
+            s3Object = obj,
+            onDismissRequest = { contextObject = null },
+            onOpenWithClick = { /* TODO */ contextObject = null },
+            onShareClick = { /* TODO */ contextObject = null },
+            onRenameClick = { 
+                itemToRename = obj
+                contextObject = null 
+            },
+            onDownloadClick = {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                viewModel.downloadObject(obj.objectKey, downloadsDir)
+                contextObject = null 
+            },
+            onDeleteClick = {
+                itemsToDelete = listOf(obj.objectKey)
+                contextObject = null 
+            },
+            onPropertiesClick = {
+                itemToShowProperties = obj
+                if (obj.isDirectory || obj.objectKey.endsWith("/")) {
+                    isLoadingStats = true
+                    coroutineScope.launch {
+                        folderStats = viewModel.getFolderStats(obj.objectKey)
+                        isLoadingStats = false
+                    }
+                }
+                contextObject = null 
+            },
+            onFolderStatsClick = {
+                itemToShowProperties = obj
+                if (obj.isDirectory || obj.objectKey.endsWith("/")) {
+                    isLoadingStats = true
+                    coroutineScope.launch {
+                        folderStats = viewModel.getFolderStats(obj.objectKey)
+                        isLoadingStats = false
+                    }
+                }
+                contextObject = null 
+            }
+        )
+    }
+
+    itemsToDelete?.let { keys ->
+        DeleteConfirmationDialog(
+            objectsToDelete = keys,
+            onConfirm = {
+                viewModel.deleteObjects(keys)
+                itemsToDelete = null
+            },
+            onDismiss = { itemsToDelete = null }
+        )
+    }
+
+    itemToRename?.let { obj ->
+        RenameDialog(
+            s3Object = obj,
+            onConfirm = { newName ->
+                val newKey = if (uiState.currentPrefix.isEmpty()) newName else "${uiState.currentPrefix}$newName"
+                viewModel.renameObject(obj.objectKey, newKey)
+                itemToRename = null
+            },
+            onDismiss = { itemToRename = null }
+        )
+    }
+
+    itemToShowProperties?.let { obj ->
+        PropertiesDialog(
+            s3Object = obj,
+            stats = folderStats,
+            isLoadingStats = isLoadingStats,
+            onDismiss = { 
+                itemToShowProperties = null
+                folderStats = null
+                isLoadingStats = false
+            }
+        )
+    }
+
+    if (showTransfersSheet) {
+        val transfers by viewModel.transfers.collectAsState()
+        net.m21xx.s3explorer.ui.explorer.components.TransfersBottomSheet(
+            transfers = transfers,
+            onDismissRequest = { showTransfersSheet = false },
+            onCancelTransfer = { id -> viewModel.cancelTransfer(id) },
+            onClearCompleted = { viewModel.clearCompletedTransfers() }
+        )
+    }
+}
 }

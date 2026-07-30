@@ -11,11 +11,13 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -37,9 +39,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.decode.VideoFrameDecoder
-import androidx.compose.runtime.DisposableEffect
 import kotlinx.coroutines.launch
-
+import net.m21xx.s3explorer.ui.explorer.components.ObjectActionBottomSheet
+import net.m21xx.s3explorer.data.local.entity.S3ObjectEntity
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -48,6 +50,7 @@ fun MediaViewerScreen(
     viewModel: MediaViewerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var contextObject by remember { mutableStateOf<S3ObjectEntity?>(null) }
     
     val view = LocalView.current
     val window = (view.context as? android.app.Activity)?.window
@@ -118,6 +121,38 @@ fun MediaViewerScreen(
         ) {
             Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
         }
+
+        if (uiState.mediaItems.isNotEmpty()) {
+            val pagerState = rememberPagerState(
+                initialPage = uiState.initialPage,
+                pageCount = { uiState.mediaItems.size }
+            )
+            val currentItem = uiState.mediaItems.getOrNull(pagerState.currentPage)
+            if (currentItem != null) {
+                IconButton(
+                    onClick = { contextObject = currentItem.entity },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 32.dp, end = 8.dp)
+                ) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Options", tint = Color.White)
+                }
+            }
+        }
+    }
+
+    contextObject?.let { obj ->
+        ObjectActionBottomSheet(
+            s3Object = obj,
+            onDismissRequest = { contextObject = null },
+            onOpenWithClick = { /* TODO */ contextObject = null },
+            onShareClick = { /* TODO */ contextObject = null },
+            onRenameClick = { /* TODO */ contextObject = null },
+            onDownloadClick = { /* TODO */ contextObject = null },
+            onDeleteClick = { /* TODO */ contextObject = null },
+            onPropertiesClick = { /* TODO */ contextObject = null },
+            onFolderStatsClick = { /* TODO */ contextObject = null }
+        )
     }
 }
 
