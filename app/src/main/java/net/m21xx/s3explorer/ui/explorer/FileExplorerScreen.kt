@@ -34,6 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.LaunchedEffect
@@ -91,6 +92,16 @@ fun FileExplorerScreen(
     var itemToShowProperties by remember { mutableStateOf<S3ObjectEntity?>(null) }
     var folderStats by remember { mutableStateOf<StorageStatsSummary?>(null) }
     var isLoadingStats by remember { mutableStateOf(false) }
+
+    val transfers by viewModel.transfers.collectAsState()
+    var previousTransferCount by remember { mutableIntStateOf(transfers.size) }
+
+    LaunchedEffect(transfers.size) {
+        if (transfers.size > previousTransferCount) {
+            showTransfersSheet = true
+        }
+        previousTransferCount = transfers.size
+    }
 
     val pullToRefreshState = rememberPullToRefreshState()
 
@@ -644,7 +655,8 @@ fun FileExplorerScreen(
             onDownloadClick = {
                 val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
                 viewModel.downloadObject(obj.objectKey, downloadsDir)
-                contextObject = null 
+                contextObject = null
+                showTransfersSheet = true
             },
             onDeleteClick = {
                 itemsToDelete = listOf(obj.objectKey)
@@ -712,12 +724,14 @@ fun FileExplorerScreen(
     }
 
     if (showTransfersSheet) {
-        val transfers by viewModel.transfers.collectAsState()
         net.m21xx.s3explorer.ui.explorer.components.TransfersBottomSheet(
             transfers = transfers,
             onDismissRequest = { showTransfersSheet = false },
             onCancelTransfer = { id -> viewModel.cancelTransfer(id) },
-            onClearCompleted = { viewModel.clearCompletedTransfers() }
+            onClearCompleted = { 
+                viewModel.clearCompletedTransfers()
+                showTransfersSheet = false
+            }
         )
     }
 }
